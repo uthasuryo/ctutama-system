@@ -1,0 +1,26 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Portal tidak boleh diindeks mesin pencari
+<IfModule mod_headers.c>
+  Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+
+# Lindungi file tersembunyi dan file sensitif
+<FilesMatch "^\.|\.(sql|md|log|ini|sh|bak)$">
+  Require all denied
+</FilesMatch>
+
+# Batas unggah dokumen (samakan dengan max_upload_mb di config.php).
+# Bila server memakai PHP-FPM, atur lewat MultiPHP INI Editor di cPanel dan hapus blok ini.
+<IfModule mod_php.c>
+  php_value upload_max_filesize 25M
+  php_value post_max_size 110M
+  php_value max_file_uploads 20
+</IfModule>
+
+# --- Opsional: batasi akses hanya dari IP tertentu ---
+# <RequireAny>
+#   Require ip 203.0.113.10
+#   Require ip 198.51.100.0/24
+# </RequireAny>

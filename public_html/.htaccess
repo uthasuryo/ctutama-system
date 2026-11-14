@@ -1,0 +1,22 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Bila folder portal terpaksa berada di dalam public_html (public_html/portal),
+# folder itu hanya boleh dibuka lewat portal.ctutama.com, bukan ctutama.com/portal.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} !^portal\. [NC]
+  RewriteRule ^(portal|portal\.ctutama\.com)(/|$) - [R=404,L]
+</IfModule>
+
+# Lindungi file tersembunyi dan file sensitif
+<FilesMatch "^\.|\.(sql|md|log|ini|sh|bak)$">
+  Require all denied
+</FilesMatch>
+
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|png|jpg|jpeg|svg|webp|woff2)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+</IfModule>
