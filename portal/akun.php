@@ -14,8 +14,10 @@ if (is_post()) {
     } elseif ($new !== ($_POST['new2'] ?? '')) {
         flash('error', 'Konfirmasi kata sandi baru tidak sama.');
     } else {
-        q('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($new, PASSWORD_DEFAULT), $me['id']]);
+        $newHash = password_hash($new, PASSWORD_DEFAULT);
+        q('UPDATE users SET password_hash = ? WHERE id = ?', [$newHash, $me['id']]);
         session_regenerate_id(true);
+        bind_session((int)$me['id'], $newHash); // sesi di perangkat lain otomatis keluar
         log_activity('ganti_sandi');
         flash('success', 'Kata sandi berhasil diganti.');
     }

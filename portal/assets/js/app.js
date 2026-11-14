@@ -9,6 +9,14 @@
   tog?.addEventListener('click', () => setSide(!side.classList.contains('is-open')));
   scrim?.addEventListener('click', () => setSide(false));
 
+  // Dropdown navigasi (pengganti onchange inline agar CSP tetap ketat)
+  document.querySelectorAll('select[data-nav]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      if (v.startsWith('?')) location.href = location.pathname + v;
+    });
+  });
+
   // Konfirmasi sebelum aksi berbahaya
   document.querySelectorAll('form[data-confirm]').forEach(f => {
     f.addEventListener('submit', e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); });

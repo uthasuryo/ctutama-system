@@ -1,25 +1,47 @@
-Options -Indexes
+Options -Indexes -MultiViews
 DirectoryIndex index.php
+ServerSignature Off
 
-# Portal tidak boleh diindeks mesin pencari
-<IfModule mod_headers.c>
-  Header always set X-Robots-Tag "noindex, nofollow"
-</IfModule>
+# Halaman error kustom (403 sengaja ditampilkan sebagai 404 agar tidak membocorkan isi server)
+ErrorDocument 404 /404.php
+ErrorDocument 403 /404.php
 
-# Lindungi file tersembunyi dan file sensitif
-<FilesMatch "^\.|\.(sql|md|log|ini|sh|bak)$">
+# Blokir semua path yang diawali titik (.git, .env, .htaccess, .DS_Store, dll.), kecuali .well-known (SSL)
+RedirectMatch 404 "(?i)/\.(?!well-known/)"
+
+# Blokir file yang tidak boleh ada di docroot: dokumentasi, backup, arsip, konfigurasi, skrip
+<FilesMatch "(?i)\.(md|txt~|sql|sqlite|db|log|ini|sh|bash|bak|backup|old|orig|save|swp|swo|tmp|dist|zip|tar|gz|tgz|rar|7z|env|yml|yaml|lock|phar|phps|inc)$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "(?i)^(composer\.(json|lock)|package(-lock)?\.json|deploy\.sh|readme.*|license.*|changelog.*|config\.php|config\.sample\.php|schema\.sql|error_log|php_errorlog|_boot\.php)$">
   Require all denied
 </FilesMatch>
 
+# Metode HTTP yang diizinkan hanya GET, POST, HEAD
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_METHOD} !^(GET|POST|HEAD)$
+  RewriteRule .* - [F,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always unset X-Powered-By
+  # Portal tidak boleh diindeks atau dimuat di dalam frame situs lain.
+  # (Halaman PHP sudah mengirim header ini; "set" di sini menimpa, bukan menggandakan.)
+  Header set X-Robots-Tag "noindex, nofollow"
+  Header set X-Frame-Options "DENY"
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
 # Batas unggah dokumen (samakan dengan max_upload_mb di config.php).
-# Bila server memakai PHP-FPM, atur lewat MultiPHP INI Editor di cPanel dan hapus blok ini.
+# Di Hostinger atur juga lewat hPanel » Konfigurasi PHP website portal.
 <IfModule mod_php.c>
   php_value upload_max_filesize 25M
   php_value post_max_size 110M
   php_value max_file_uploads 20
 </IfModule>
 
-# --- Opsional: batasi akses hanya dari IP tertentu ---
+# --- Opsional: batasi portal hanya dari IP tertentu (hapus tanda # lalu isi IP) ---
 # <RequireAny>
 #   Require ip 203.0.113.10
 #   Require ip 198.51.100.0/24

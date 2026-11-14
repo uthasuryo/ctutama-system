@@ -14,7 +14,14 @@ return [
     // Path dasar bila dipasang di subfolder (mis. '/ctu'). Biarkan '' untuk root domain/subdomain.
     'base_url'   => '',
 
-    'env'        => 'production',   // 'development' untuk menampilkan error
+    'env'        => 'production',   // 'development' untuk menampilkan error — JANGAN dipakai di server
+
+    // Kode untuk membuka portal/setup.php saat membuat admin pertama.
+    // Isi dengan teks acak panjang (mis. hasil: openssl rand -hex 16), lalu kosongkan lagi setelah instalasi.
+    'setup_key'  => '',
+
+    // Kosongkan, kecuali situs di belakang CDN/proxy. Contoh Cloudflare: 'HTTP_CF_CONNECTING_IP'
+    'client_ip_header' => '',
     'timezone'   => 'Asia/Jakarta',
 
     'db' => [

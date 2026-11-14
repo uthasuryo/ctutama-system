@@ -9,8 +9,7 @@ $id = (int)($_GET['id'] ?? 0);
 $inline = !empty($_GET['lihat']);
 
 $deny = function (): never {
-    http_response_code(404);
-    exit('Dokumen tidak ditemukan atau Anda tidak memiliki akses.');
+    not_found();
 };
 
 if ($type === 'legal') {

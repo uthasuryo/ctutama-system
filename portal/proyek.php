@@ -24,7 +24,7 @@ if ($search !== '') {
 }
 $projects = q_all('SELECT p.*, c.net_margin, c.net_profit, (SELECT COUNT(*) FROM project_documents d WHERE d.project_id = p.id' . ($admin ? '' : ' AND d.visible_to_investor = 1') . ') docs
                    FROM projects p LEFT JOIN project_calculations c ON c.project_id = p.id' . $join . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . '
-                   ORDER BY FIELD(p.status, "berjalan","persiapan","tertunda","selesai","batal"), COALESCE(p.start_date, p.created_at) DESC', $params);
+                   ORDER BY FIELD(p.status, \'berjalan\', \'persiapan\', \'tertunda\', \'selesai\', \'batal\'), COALESCE(p.start_date, p.created_at) DESC', $params);
 $years = q_all('SELECT DISTINCT YEAR(COALESCE(start_date, created_at)) y FROM projects ORDER BY y DESC');
 $sum = array_sum(array_map(fn($p) => (float)$p['contract_value'], $projects));
 
@@ -35,9 +35,9 @@ $active = 'proyek';
 require APP_ROOT . '/views/app_header.php';
 ?>
 <div class="tabs">
-  <a href="<?= $qs(['divisi' => '']) ?>" class="<?= !$div ? 'is-on' : '' ?>">Semua</a>
+  <a href="<?= e($qs(['divisi' => ''])) ?>" class="<?= !$div ? 'is-on' : '' ?>">Semua</a>
   <?php foreach (divisions() as $slug => $d): ?>
-    <a href="<?= $qs(['divisi' => $slug]) ?>" class="<?= $div === $slug ? 'is-on' : '' ?>" style="--dc:<?= e($d['color']) ?>"><span class="dot"></span><?= e($d['name']) ?></a>
+    <a href="<?= e($qs(['divisi' => $slug])) ?>" class="<?= $div === $slug ? 'is-on' : '' ?>" style="--dc:<?= e($d['color']) ?>"><span class="dot"></span><?= e($d['name']) ?></a>
   <?php endforeach; ?>
 </div>
 
@@ -47,13 +47,13 @@ require APP_ROOT . '/views/app_header.php';
     <input name="q" placeholder="Cari nama proyek, klien, nomor kontrak…" value="<?= e($search) ?>">
     <?php foreach (['divisi' => $div, 'status' => $status, 'tahun' => $year] as $k => $v) if ($v) echo '<input type="hidden" name="' . $k . '" value="' . e($v) . '">'; ?>
   </form>
-  <select class="select" onchange="location=this.value">
-    <option value="<?= $qs(['status' => '']) ?>">Semua status</option>
-    <?php foreach (project_statuses() as $k => $v): ?><option value="<?= $qs(['status' => $k]) ?>" <?= $status === $k ? 'selected' : '' ?>><?= e($v) ?></option><?php endforeach; ?>
+  <select class="select" data-nav>
+    <option value="<?= e($qs(['status' => ''])) ?>">Semua status</option>
+    <?php foreach (project_statuses() as $k => $v): ?><option value="<?= e($qs(['status' => $k])) ?>" <?= $status === $k ? 'selected' : '' ?>><?= e($v) ?></option><?php endforeach; ?>
   </select>
-  <select class="select" onchange="location=this.value">
-    <option value="<?= $qs(['tahun' => '']) ?>">Semua tahun</option>
-    <?php foreach ($years as $y): ?><option value="<?= $qs(['tahun' => $y['y']]) ?>" <?= $year == $y['y'] ? 'selected' : '' ?>><?= e($y['y']) ?></option><?php endforeach; ?>
+  <select class="select" data-nav>
+    <option value="<?= e($qs(['tahun' => ''])) ?>">Semua tahun</option>
+    <?php foreach ($years as $y): ?><option value="<?= e($qs(['tahun' => $y['y']])) ?>" <?= $year == $y['y'] ? 'selected' : '' ?>><?= e($y['y']) ?></option><?php endforeach; ?>
   </select>
   <?php if ($admin): ?><a class="btn btn--primary" href="<?= url('proyek-form.php' . ($div ? '?divisi=' . $div : '')) ?>"><?= icon('plus', 18) ?> Proyek Baru</a><?php endif; ?>
 </div>

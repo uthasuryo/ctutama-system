@@ -331,3 +331,19 @@ p { margin: 0 0 1em; }
   .mark polyline { stroke-dashoffset: 0; }
   .ticker__track { animation: none; }
 }
+
+/* ---------- Halaman 404 ---------- */
+.e404 { position: relative; min-height: 100svh; display: flex; align-items: center; background: var(--navy); color: #fff; overflow: hidden; padding: 130px 0 90px; text-align: center; }
+.e404__inner { position: relative; display: flex; flex-direction: column; align-items: center; }
+.e404__art { display: flex; align-items: center; justify-content: center; gap: clamp(6px, 2vw, 20px); margin-bottom: 26px; }
+.e404__num { font-family: var(--display); font-weight: 700; font-size: clamp(6rem, 20vw, 12rem); line-height: .9; background: linear-gradient(180deg, #fff, rgba(255, 255, 255, .35)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.e404__mark { width: clamp(90px, 16vw, 170px); height: auto; overflow: visible; filter: drop-shadow(0 24px 30px rgba(0, 0, 0, .45)); }
+.e404__mark polyline { fill: none; stroke-width: 30; stroke-linejoin: miter; }
+.e404__a { stroke: var(--blue); animation: e404a 3.2s var(--ease) infinite alternate; transform-origin: 112px 100px; }
+.e404__b { stroke: var(--taupe); animation: e404b 3.2s var(--ease) infinite alternate; transform-origin: 200px 200px; }
+@keyframes e404a { 0%, 30% { transform: translate(-14px, -18px) rotate(-8deg); } 100% { transform: none; } }
+@keyframes e404b { 0%, 30% { transform: translate(14px, 22px) rotate(7deg); } 100% { transform: none; } }
+.e404 h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 20px 0 14px; }
+.e404__lead { max-width: 560px; color: rgba(255, 255, 255, .68); font-size: 1.05rem; }
+.e404__cta { justify-content: center; }
+.e404__chips { justify-content: center; }

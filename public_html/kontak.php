@@ -17,10 +17,15 @@ if (is_post()) {
     // Honeypot anti-spam + jeda minimal pengisian 3 detik
     if (input('website') !== '' && input('website') !== null) $errors[] = 'spam';
     if (time() - (int)($_SESSION['_contact_t'] ?? 0) < 3) $errors[] = 'Mohon tunggu sebentar sebelum mengirim.';
-    if (time() - (int)($_SESSION['_contact_last'] ?? 0) < 60) $errors[] = 'Pesan sebelumnya baru saja terkirim. Coba lagi dalam satu menit.';
+    ensure_schema();
+    $ip = client_ip();
+    if (throttle_count('contact', $ip, 600) >= 3 || throttle_count('contact', $ip, 86400) >= 15) {
+        $errors[] = 'Terlalu banyak pesan dari jaringan Anda. Silakan coba lagi nanti atau hubungi kami lewat WhatsApp.';
+    }
     if ($data['name'] === '') $errors[] = 'Nama wajib diisi.';
     if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Alamat email tidak valid.';
     if (mb_strlen($data['message']) < 10) $errors[] = 'Pesan minimal 10 karakter.';
+    if (preg_match_all('~https?://~i', $data['message']) > 3) $errors[] = 'Pesan berisi terlalu banyak tautan.';
     if (!isset(divisions()[$data['division']])) $data['division'] = null;
 
     if ($errors) {
@@ -33,9 +38,9 @@ if (is_post()) {
 
     q('INSERT INTO contact_messages (name, email, phone, company, division, message, ip_address) VALUES (?,?,?,?,?,?,?)', [
         $data['name'], strtolower($data['email']), nullable($data['phone']), nullable($data['company']),
-        $data['division'], $data['message'], $_SERVER['REMOTE_ADDR'] ?? null,
+        $data['division'], $data['message'], $ip,
     ]);
-    $_SESSION['_contact_last'] = time();
+    throttle_hit('contact', $ip);
     flash('success', 'Terima kasih, pesan Anda sudah kami terima. Tim kami akan segera menghubungi Anda.');
     redirect('kontak.php#form');
 }

@@ -100,10 +100,10 @@ require APP_ROOT . '/views/app_header.php';
     <input name="q" placeholder="Cari judul, nomor, penerbit…" value="<?= e($search) ?>">
     <?php if ($cat): ?><input type="hidden" name="kategori" value="<?= e($cat) ?>"><?php endif; ?>
   </form>
-  <select class="select" onchange="location='?kategori='+encodeURIComponent(this.value)">
-    <option value="">Semua kategori (<?= array_sum($counts) ?>)</option>
+  <select class="select" data-nav aria-label="Filter kategori">
+    <option value="?">Semua kategori (<?= array_sum($counts) ?>)</option>
     <?php foreach (legal_categories() as $c): ?>
-      <option value="<?= e($c) ?>" <?= $cat === $c ? 'selected' : '' ?>><?= e($c) ?> (<?= (int)($counts[$c] ?? 0) ?>)</option>
+      <option value="?kategori=<?= e(rawurlencode($c)) ?>" <?= $cat === $c ? 'selected' : '' ?>><?= e($c) ?> (<?= (int)($counts[$c] ?? 0) ?>)</option>
     <?php endforeach; ?>
   </select>
   <?php if ($admin): ?><a class="btn btn--primary" href="#unggah"><?= icon('upload', 18) ?> Unggah</a><?php endif; ?>

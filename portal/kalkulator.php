@@ -107,11 +107,11 @@ require APP_ROOT . '/views/app_header.php';
 <div class="toolbar">
   <label class="pickproj">
     <?= icon('folder', 18) ?>
-    <select class="select" onchange="location='?proyek='+this.value">
-      <option value="">— Simulasi bebas (tidak terhubung proyek) —</option>
+    <select class="select" data-nav aria-label="Pilih proyek">
+      <option value="?">— Simulasi bebas (tidak terhubung proyek) —</option>
       <?php $lastDiv = null; foreach ($projects as $pp):
         if ($pp['division'] !== $lastDiv) { if ($lastDiv) echo '</optgroup>'; echo '<optgroup label="' . e(division_name($pp['division'])) . '">'; $lastDiv = $pp['division']; } ?>
-        <option value="<?= $pp['id'] ?>" <?= $project && $project['id'] == $pp['id'] ? 'selected' : '' ?>><?= e($pp['name']) ?><?= $pp['net_margin'] !== null ? ' · ' . number_format((float)$pp['net_margin'], 1, ',', '.') . '%' : ' · belum dihitung' ?></option>
+        <option value="?proyek=<?= (int)$pp['id'] ?>" <?= $project && $project['id'] == $pp['id'] ? 'selected' : '' ?>><?= e($pp['name']) ?><?= $pp['net_margin'] !== null ? ' · ' . number_format((float)$pp['net_margin'], 1, ',', '.') . '%' : ' · belum dihitung' ?></option>
       <?php endforeach; if ($lastDiv) echo '</optgroup>'; ?>
     </select>
   </label>
@@ -253,15 +253,15 @@ require APP_ROOT . '/views/app_header.php';
     <?php endif; ?>
   </div>
 </div>
-<script>window.CALC = <?= json_encode(['mode' => 'proyek', 'inputs' => $inputs, 'defaults' => ['b' => margin_default_rows('b'), 'k' => margin_default_rows('k'), 'j' => margin_default_rows('j')]], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;</script>
+<script type="application/json" id="calcData"><?= json_encode(['mode' => 'proyek', 'inputs' => $inputs, 'defaults' => ['b' => margin_default_rows('b'), 'k' => margin_default_rows('k'), 'j' => margin_default_rows('j')]], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 
 <?php else: ?>
 <!-- =================== TAHUNAN =================== -->
 <div class="toolbar">
   <label class="pickproj"><?= icon('clock', 18) ?>
-    <select class="select" onchange="location='?tab=tahunan&tahun='+this.value">
-      <?php foreach ($years as $y): ?><option value="<?= $y ?>" <?= $y === $year ? 'selected' : '' ?>>Tahun pajak <?= $y ?></option><?php endforeach; ?>
-      <option value="<?= max($years) + 1 ?>">Tahun pajak <?= max($years) + 1 ?></option>
+    <select class="select" data-nav aria-label="Tahun pajak">
+      <?php foreach ($years as $y): ?><option value="?tab=tahunan&amp;tahun=<?= $y ?>" <?= $y === $year ? 'selected' : '' ?>>Tahun pajak <?= $y ?></option><?php endforeach; ?>
+      <option value="?tab=tahunan&amp;tahun=<?= max($years) + 1 ?>">Tahun pajak <?= max($years) + 1 ?></option>
     </select>
   </label>
 </div>
@@ -357,14 +357,14 @@ require APP_ROOT . '/views/app_header.php';
     </section>
   </div>
 </div>
-<script>window.CALC = <?= json_encode([
+<script type="application/json" id="calcData"><?= json_encode([
     'mode' => 'tahunan',
     'annual' => $annualIn,
     'projects' => array_map(fn($a) => [
         'o' => (float)$a['net_sales'], 'e' => (float)$a['ebt'], 't' => (float)$a['withholding'], 'k' => (bool)$a['is_final'],
         'po' => (float)$a['ppn_out'], 'pi' => (float)$a['ppn_in'], 'pv' => (bool)$a['ppn_by_client'],
     ], $annualRows),
-], JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
+], JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <?php endif; ?>
 
 <script src="<?= asset('js/kalkulator.js') ?>" defer></script>

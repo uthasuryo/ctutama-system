@@ -37,6 +37,19 @@ function redirect(string $path): never
     exit;
 }
 
+/** Tampilkan halaman 404 milik website/portal yang sedang berjalan, lalu berhenti. */
+function not_found(): never
+{
+    $page = defined('DOC_ROOT') ? DOC_ROOT . '/404.php' : '';
+    if ($page !== '' && is_file($page)) {
+        require $page;
+    } else {
+        http_response_code(404);
+        echo 'Halaman tidak ditemukan.';
+    }
+    exit;
+}
+
 function back(string $fallback = ''): never
 {
     $ref = $_SERVER['HTTP_REFERER'] ?? '';
@@ -95,8 +108,14 @@ function csrf_check(): void
 {
     $token = $_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!is_string($token) || !hash_equals(csrf_token(), $token)) {
-        http_response_code(419);
-        exit('Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+        // 403 (bukan 419): Apache/LiteSpeed tidak mengenal 419 dan akan mengubahnya menjadi 500
+        http_response_code(403);
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!DOCTYPE html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sesi kedaluwarsa</title>'
+           . '<body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center">'
+           . '<div><h1>Sesi formulir kedaluwarsa</h1><p>Muat ulang halaman sebelumnya, lalu coba kirim lagi.</p>'
+           . '<p><a href="' . e(url('')) . '">Kembali ke halaman utama</a></p></div>';
+        exit;
     }
 }
 
@@ -265,7 +284,7 @@ function log_activity(string $action, ?string $detail = null): void
     try {
         q('INSERT INTO activity_log (user_id, action, detail, ip_address) VALUES (?,?,?,?)', [
             current_user()['id'] ?? null, $action, $detail ? mb_substr($detail, 0, 300) : null,
-            $_SERVER['REMOTE_ADDR'] ?? null,
+            client_ip(),
         ]);
     } catch (Throwable) {
         // log tidak boleh mengganggu alur utama

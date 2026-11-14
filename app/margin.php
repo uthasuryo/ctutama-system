@@ -181,15 +181,15 @@ function annual_normalize(array $in): array
     return $out;
 }
 
-/** Buat tabel kalkulator bila database dipasang sebelum fitur ini ada. */
+/** Buat tabel yang belum ada (kalkulator, keamanan) bila database dipasang dari versi lama. */
 function ensure_schema(): void
 {
-    if (!empty($_SESSION['_schema_v2'])) return;
-    $has = (bool)q_val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'project_calculations'");
+    if (!empty($_SESSION['_schema_v3'])) return;
+    $has = (int)q_val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('project_calculations', 'security_events')") === 2;
     if (!$has) {
         db()->exec(file_get_contents(dirname(APP_ROOT) . '/database/schema.sql'));
     }
-    $_SESSION['_schema_v2'] = true;
+    $_SESSION['_schema_v3'] = true;
 }
 
 /** Ringkasan margin tersimpan untuk satu proyek (atau null). */

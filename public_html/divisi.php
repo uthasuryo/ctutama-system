@@ -4,7 +4,7 @@ require __DIR__ . '/_boot.php';
 $slug = (string)($_GET['d'] ?? '');
 $all = divisions();
 if (!isset($all[$slug])) {
-    redirect('index.php#divisi');
+    not_found();
 }
 $d = $all[$slug];
 $projects = q_all('SELECT * FROM projects WHERE is_public = 1 AND division = ? ORDER BY COALESCE(end_date, start_date, created_at) DESC LIMIT 9', [$slug]);

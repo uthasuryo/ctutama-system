@@ -1,22 +1,39 @@
-Options -Indexes
+Options -Indexes -MultiViews
 DirectoryIndex index.php
+ServerSignature Off
 
-# Bila folder portal terpaksa berada di dalam public_html (public_html/portal),
-# folder itu hanya boleh dibuka lewat portal.ctutama.com, bukan ctutama.com/portal.
+# Halaman error kustom (403 sengaja ditampilkan sebagai 404 agar tidak membocorkan isi server)
+ErrorDocument 404 /404.php
+ErrorDocument 403 /404.php
+
+# Blokir semua path yang diawali titik (.git, .env, .htaccess, .DS_Store, dll.), kecuali .well-known (SSL)
+RedirectMatch 404 "(?i)/\.(?!well-known/)"
+
+# Blokir file yang tidak boleh ada di docroot: dokumentasi, backup, arsip, konfigurasi, skrip
+<FilesMatch "(?i)\.(md|txt~|sql|sqlite|db|log|ini|sh|bash|bak|backup|old|orig|save|swp|swo|tmp|dist|zip|tar|gz|tgz|rar|7z|env|yml|yaml|lock|phar|phps|inc)$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "(?i)^(composer\.(json|lock)|package(-lock)?\.json|deploy\.sh|readme.*|license.*|changelog.*|config\.php|config\.sample\.php|schema\.sql|error_log|php_errorlog|_boot\.php)$">
+  Require all denied
+</FilesMatch>
+
+# Metode HTTP yang diizinkan hanya GET, POST, HEAD
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteCond %{REQUEST_METHOD} !^(GET|POST|HEAD)$
+  RewriteRule .* - [F,L]
+</IfModule>
+
+# Bila folder portal suatu saat berada di dalam public_html, hanya boleh dibuka lewat portal.ctutama.com
+<IfModule mod_rewrite.c>
   RewriteCond %{HTTP_HOST} !^portal\. [NC]
   RewriteRule ^(portal|portal\.ctutama\.com)(/|$) - [R=404,L]
 </IfModule>
 
-# Lindungi file tersembunyi dan file sensitif
-<FilesMatch "^\.|\.(sql|md|log|ini|sh|bak)$">
-  Require all denied
-</FilesMatch>
-
-
 <IfModule mod_headers.c>
+  Header always unset X-Powered-By
   <FilesMatch "\.(css|js|png|jpg|jpeg|svg|webp|woff2)$">
     Header set Cache-Control "public, max-age=2592000"
+    Header set X-Content-Type-Options "nosniff"
   </FilesMatch>
 </IfModule>

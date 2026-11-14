@@ -3,7 +3,7 @@ require __DIR__ . '/_boot.php';
 require_admin();
 
 $labels = [
-    'login' => 'Masuk', 'login_gagal' => 'Gagal masuk', 'logout' => 'Keluar',
+    'login' => 'Masuk', 'login_gagal' => 'Gagal masuk', 'login_diblokir' => 'Login diblokir (terlalu banyak percobaan)', 'instalasi' => 'Instalasi admin pertama', 'logout' => 'Keluar',
     'unggah_legal' => 'Unggah dokumen legal', 'ubah_legal' => 'Ubah dokumen legal', 'hapus_legal' => 'Hapus dokumen legal', 'unduh_legal' => 'Unduh dokumen legal',
     'tambah_proyek' => 'Tambah proyek', 'ubah_proyek' => 'Ubah proyek', 'hapus_proyek' => 'Hapus proyek',
     'unggah_dok_proyek' => 'Unggah dokumen proyek', 'hapus_dok_proyek' => 'Hapus dokumen proyek', 'unduh_dok_proyek' => 'Unduh dokumen proyek', 'unduh_zip_proyek' => 'Unduh ZIP proyek',
@@ -31,7 +31,7 @@ require APP_ROOT . '/views/app_header.php';
         <tr>
           <td class="nowrap small"><?= tgl($r['created_at'], true) ?></td>
           <td class="small"><?= e($r['name'] ?: '–') ?></td>
-          <td><span class="tag <?= str_contains($r['action'], 'hapus') || $r['action'] === 'login_gagal' ? 'tag--red' : '' ?>"><?= e($labels[$r['action']] ?? $r['action']) ?></span></td>
+          <td><span class="tag <?= str_contains($r['action'], 'hapus') || str_starts_with($r['action'], 'login_') ? 'tag--red' : '' ?>"><?= e($labels[$r['action']] ?? $r['action']) ?></span></td>
           <td class="small"><?= e($r['detail'] ?: '') ?></td>
           <td class="small muted"><?= e($r['ip_address'] ?: '') ?></td>
         </tr>

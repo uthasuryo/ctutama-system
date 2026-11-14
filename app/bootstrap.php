@@ -19,11 +19,17 @@ if (config('env') === 'development') {
     ini_set('display_errors', '0');
 }
 
+require APP_ROOT . '/security.php';
+install_error_handler();
+send_security_headers();
+
 // Sesi yang aman
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-    session_name('CTUSESSID');
+    $secure = is_https();
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.gc_maxlifetime', '7200');
+    session_name(defined('APP_SIDE') && APP_SIDE === 'portal' ? 'CTUPORTAL' : 'CTUSESSID');
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => (config('base_url') ?: '') . '/',
@@ -33,11 +39,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     ]);
     session_start();
 }
-
-// Header keamanan dasar
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: SAMEORIGIN');
-header('Referrer-Policy: strict-origin-when-cross-origin');
 
 require APP_ROOT . '/helpers.php';
 require APP_ROOT . '/db.php';

@@ -39,6 +39,12 @@ if (is_post()) {
     if (!$errors && ($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         [$cover, $err] = store_upload($_FILES['cover'], config('cover_path'), '', IMAGE_TYPES);
         if ($err) $errors[] = 'Sampul: ' . $err;
+        $coverFile = $cover ? rtrim(config('cover_path'), '/') . '/' . $cover['path'] : null;
+        if ($cover && !reencode_image($coverFile, $cover['mime'])) {
+            @unlink($coverFile);
+            $cover = null;
+            $errors[] = 'Sampul: file gambar rusak atau tidak dapat dibaca.';
+        }
     }
 
     if ($errors) {

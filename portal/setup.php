@@ -16,13 +16,25 @@ if ((int)q_val('SELECT COUNT(*) FROM users') > 0) {
     redirect('login.php');
 }
 
+$setupKey = (string)config('setup_key', '');
+$keyReady = strlen($setupKey) >= 16;
+
 $errors = [];
-if (is_post()) {
+if (is_post() && $keyReady) {
     csrf_check();
+    ensure_schema();
+    if (throttle_count('setup_fail', client_ip(), 900) >= 5) {
+        http_response_code(429);
+        exit('Terlalu banyak percobaan. Coba lagi nanti.');
+    }
+    if (!hash_equals($setupKey, (string)($_POST['setup_key'] ?? ''))) {
+        throttle_hit('setup_fail', client_ip());
+        $errors[] = 'Kode instalasi salah.';
+    }
     $name = (string)input('name', '');
     $email = strtolower((string)input('email', ''));
     $pass = (string)($_POST['password'] ?? '');
-    if ($name === '') $errors[] = 'Nama wajib diisi.';
+    if (!$errors && $name === '') $errors[] = 'Nama wajib diisi.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Email tidak valid.';
     if ($pe = validate_password($pass)) $errors[] = $pe;
     if ($pass !== ($_POST['password2'] ?? '')) $errors[] = 'Konfirmasi kata sandi tidak sama.';
@@ -32,7 +44,8 @@ if (is_post()) {
             @mkdir(config('storage_path') . '/' . $d, 0750, true);
         }
         @mkdir(config('cover_path'), 0755, true);
-        flash('success', 'Akun admin berhasil dibuat. Silakan masuk.');
+        log_activity('instalasi', $email);
+        flash('success', 'Akun admin berhasil dibuat. Silakan masuk, lalu kosongkan kembali setup_key di config.php.');
         redirect('login.php');
     }
 }
@@ -59,14 +72,18 @@ $checks = [
     <ul class="checks">
       <?php foreach ($checks as [$label, $ok]): ?><li class="<?= $ok ? 'ok' : 'bad' ?>"><?= icon($ok ? 'check' : 'x', 16) ?> <?= e($label) ?></li><?php endforeach; ?>
     </ul>
+    <?php if (!$keyReady): ?>
+      <div class="alert alert--error"><span>Instalasi terkunci. Isi <code>'setup_key'</code> di <code>app/config.php</code> dengan kode acak minimal 16 karakter, lalu muat ulang halaman ini.</span></div>
+    <?php endif; ?>
     <?php foreach ($errors as $er): ?><div class="alert alert--error"><span><?= e($er) ?></span></div><?php endforeach; ?>
     <form method="post" class="form">
       <?= csrf_field() ?>
+      <label class="f"><span>Kode instalasi (setup_key di config.php)</span><input type="password" name="setup_key" required autocomplete="off" <?= $keyReady ? '' : 'disabled' ?>></label>
       <label class="f"><span>Nama</span><input name="name" required value="<?= e(input('name', '')) ?>"></label>
       <label class="f"><span>Email</span><input type="email" name="email" required value="<?= e(input('email', '')) ?>"></label>
       <label class="f"><span>Kata sandi (min. 8, huruf + angka)</span><input type="password" name="password" required minlength="8"></label>
       <label class="f"><span>Ulangi kata sandi</span><input type="password" name="password2" required minlength="8"></label>
-      <button class="btn btn--primary btn--block">Buat Akun Admin</button>
+      <button class="btn btn--primary btn--block" <?= $keyReady ? '' : 'disabled' ?>>Buat Akun Admin</button>
     </form>
   </main>
 </body>

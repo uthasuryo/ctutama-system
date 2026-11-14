@@ -4,8 +4,9 @@
    ========================================================== */
 (function () {
   'use strict';
-  var C = window.CALC;
-  if (!C) return;
+  var dataEl = document.getElementById('calcData');
+  if (!dataEl) return;
+  var C = JSON.parse(dataEl.textContent);
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- Format & parsing ---------- */

@@ -26,7 +26,11 @@ if (is_post()) {
         }
         if ($id) {
             q('UPDATE users SET name=?, email=?, phone=?, role=? WHERE id=?', [$name, $email, $phone, $role, $id]);
-            if ($pass !== '') q('UPDATE users SET password_hash=? WHERE id=?', [password_hash($pass, PASSWORD_DEFAULT), $id]);
+            if ($pass !== '') {
+                $newHash = password_hash($pass, PASSWORD_DEFAULT);
+                q('UPDATE users SET password_hash=? WHERE id=?', [$newHash, $id]); // sesi pengguna tsb. otomatis berakhir
+                if ($id === (int)$me['id']) bind_session($id, $newHash);
+            }
             log_activity('ubah_pengguna', $email);
             flash('success', 'Akun ' . $name . ' diperbarui.');
         } else {

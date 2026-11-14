@@ -19,9 +19,9 @@ if (is_post()) {
     csrf_check();
     [$ok, $error] = attempt_login((string)input('email', ''), (string)($_POST['password'] ?? ''));
     if ($ok) {
-        $to = $_SESSION['_intended'] ?? null;
+        $to = safe_local_path($_SESSION['_intended'] ?? null);
         unset($_SESSION['_intended']);
-        if ($to && str_starts_with($to, url(''))) {
+        if ($to) {
             header('Location: ' . $to);
             exit;
         }

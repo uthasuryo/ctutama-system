@@ -76,6 +76,34 @@ function store_upload(?array $file, string $baseDir, string $subDir, array $allo
     ], null];
 }
 
+/**
+ * Buat ulang gambar lewat GD: membuang metadata (EXIF/GPS) dan isi tersembunyi,
+ * sekaligus memperkecil ke maks. 2000 px. Mengembalikan false bila gambar tidak valid.
+ */
+function reencode_image(string $path, string $mime, int $maxSide = 2000): bool
+{
+    if (!function_exists('imagecreatefromstring')) return true; // GD tidak tersedia: lewati
+    $data = @file_get_contents($path);
+    $img = $data !== false ? @imagecreatefromstring($data) : false;
+    if (!$img) return false;
+    $w = imagesx($img); $h = imagesy($img);
+    $scale = min(1, $maxSide / max($w, $h));
+    if ($scale < 1) {
+        $nw = (int)round($w * $scale); $nh = (int)round($h * $scale);
+        $dst = imagecreatetruecolor($nw, $nh);
+        imagealphablending($dst, false); imagesavealpha($dst, true);
+        imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($img); $img = $dst;
+    }
+    $ok = match ($mime) {
+        'image/png'  => imagepng($img, $path, 6),
+        'image/webp' => function_exists('imagewebp') ? imagewebp($img, $path, 85) : false,
+        default      => imagejpeg($img, $path, 85),
+    };
+    imagedestroy($img);
+    return (bool)$ok;
+}
+
 function storage_file(string $relPath): string
 {
     $base = realpath(config('storage_path'));
@@ -108,6 +136,13 @@ function send_file(string $fullPath, string $downloadName, string $mime, bool $i
     header('Content-Disposition: ' . ($inlineOk ? 'inline' : 'attachment') . '; filename="' . $safe . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
     header('Cache-Control: private, no-store');
     header('X-Content-Type-Options: nosniff');
+    header('X-Download-Options: noopen');
+    // File unggahan tidak boleh menjalankan skrip atau memuat sumber lain
+    if (str_starts_with($mime, 'image/')) {
+        header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+    } elseif (!$inlineOk) {
+        header("Content-Security-Policy: default-src 'none'; sandbox");
+    }
     readfile($fullPath);
     exit;
 }

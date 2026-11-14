@@ -159,4 +159,14 @@ CREATE TABLE IF NOT EXISTS annual_tax_inputs (
   CONSTRAINT fk_annual_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Pembatasan percobaan (login gagal, spam formulir kontak). Disimpan sebagai hash, dibersihkan otomatis.
+CREATE TABLE IF NOT EXISTS security_events (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  kind        VARCHAR(30) NOT NULL,
+  subject     CHAR(64) NOT NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_sec_lookup (kind, subject, created_at),
+  INDEX idx_sec_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
