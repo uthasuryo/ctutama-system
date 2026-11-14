@@ -1,0 +1,18 @@
+# Konfigurasi berisi password database — jangan pernah di-commit
+app/config.php
+
+# Dokumen yang diunggah pengguna (dicadangkan terpisah, bukan lewat git)
+storage/uploads/**
+!storage/uploads/legal/
+!storage/uploads/projects/
+!storage/uploads/**/.gitkeep
+public_html/uploads/covers/*
+!public_html/uploads/covers/.gitkeep
+
+# Lain-lain
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
