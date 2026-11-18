@@ -31,6 +31,7 @@ if (is_post()) {
                 $one = ['name' => $files['name'][$i], 'type' => $files['type'][$i], 'tmp_name' => $files['tmp_name'][$i], 'error' => $files['error'][$i], 'size' => $files['size'][$i]];
                 [$file, $err] = store_upload($one, config('storage_path'), 'projects/' . $id);
                 if ($err) { $errors[] = $files['name'][$i] . ': ' . $err; continue; }
+                optimize_stored_upload($file, 'proyek');
                 $docTitle = $title !== '' ? ($n > 1 ? $title . ' (' . ($i + 1) . ')' : $title) : pathinfo($file['original'], PATHINFO_FILENAME);
                 q('INSERT INTO project_documents (project_id, title, doc_type, doc_date, notes, visible_to_investor, file_path, original_name, mime_type, file_size, uploaded_by)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
@@ -54,6 +55,7 @@ if (is_post()) {
         if ($doc) {
             q('DELETE FROM project_documents WHERE id = ?', [$doc['id']]);
             delete_stored($doc['file_path']);
+            delete_thumb($doc['file_path']);
             log_activity('hapus_dok_proyek', $doc['title']);
             flash('success', 'Dokumen dihapus.');
         }
@@ -83,8 +85,9 @@ if (is_post()) {
         }
         $docs = q_all('SELECT file_path FROM project_documents WHERE project_id = ?', [$id]);
         q('DELETE FROM projects WHERE id = ?', [$id]);
-        foreach ($docs as $d) delete_stored($d['file_path']);
+        foreach ($docs as $d) { delete_stored($d['file_path']); delete_thumb($d['file_path']); }
         @rmdir(config('storage_path') . '/projects/' . $id);
+        @rmdir(config('storage_path') . '/thumbs/projects/' . $id);
         if ($p['cover_image']) @unlink(rtrim(config('cover_path'), '/') . '/' . basename($p['cover_image']));
         log_activity('hapus_proyek', $p['name']);
         flash('success', 'Proyek "' . $p['name'] . '" beserta dokumennya dihapus.');
@@ -132,34 +135,67 @@ require APP_ROOT . '/views/app_header.php';
     <section class="card" id="dokumen">
       <div class="card__head"><h3>Dokumen proyek <span class="count"><?= count($docs) ?></span></h3></div>
       <?php if ($grouped): ?>
-        <?php foreach ($grouped as $type => $list): ?>
+        <?php foreach ($grouped as $type => $list):
+          $imgs = array_values(array_filter($list, fn($d) => is_image_mime($d['mime_type'])));
+          $files = array_values(array_filter($list, fn($d) => !is_image_mime($d['mime_type']))); ?>
           <div class="dgroup">
             <h4><?= e($type) ?> <small><?= count($list) ?></small></h4>
-            <ul class="dlist">
-              <?php foreach ($list as $d): ?>
-                <li>
-                  <span class="fi fi--<?= file_icon($d['original_name']) ?>"><?= strtoupper(pathinfo($d['original_name'], PATHINFO_EXTENSION)) ?></span>
-                  <div class="dlist__main">
-                    <b><?= e($d['title']) ?></b>
-                    <small><?= $d['doc_date'] ? tgl($d['doc_date']) . ' · ' : '' ?><?= filesize_h((int)$d['file_size']) ?><?= $admin ? ' · ' . e($d['uploader'] ?? '') : '' ?><?= $d['notes'] ? ' · ' . e($d['notes']) : '' ?></small>
-                  </div>
-                  <div class="actions">
-                    <?php if ($admin): ?>
-                      <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="toggle_doc"><input type="hidden" name="doc_id" value="<?= $d['id'] ?>"><input type="hidden" name="project_id" value="<?= $id ?>">
-                        <button class="vis <?= $d['visible_to_investor'] ? 'is-on' : '' ?>" title="<?= $d['visible_to_investor'] ? 'Terlihat oleh investor — klik untuk sembunyikan' : 'Tersembunyi dari investor — klik untuk tampilkan' ?>"><?= icon($d['visible_to_investor'] ? 'eye' : 'lock', 15) ?></button></form>
-                    <?php endif; ?>
-                    <a class="iconbtn" title="Lihat" target="_blank" href="<?= url('unduh.php?t=proyek&id=' . $d['id'] . '&lihat=1') ?>"><?= icon('eye', 17) ?></a>
-                    <a class="iconbtn" title="Unduh" href="<?= url('unduh.php?t=proyek&id=' . $d['id']) ?>"><?= icon('download', 17) ?></a>
-                    <?php if ($admin): ?>
-                      <form method="post" data-confirm="Hapus dokumen &quot;<?= e($d['title']) ?>&quot;?"><?= csrf_field() ?><input type="hidden" name="action" value="delete_doc"><input type="hidden" name="doc_id" value="<?= $d['id'] ?>"><input type="hidden" name="project_id" value="<?= $id ?>">
-                        <button class="iconbtn iconbtn--danger" title="Hapus"><?= icon('trash', 17) ?></button></form>
-                    <?php endif; ?>
-                  </div>
-                </li>
-              <?php endforeach; ?>
-            </ul>
+
+            <?php if ($imgs): ?>
+              <ul class="gallery" data-gallery>
+                <?php foreach ($imgs as $d): ?>
+                  <li class="tile <?= $admin && !$d['visible_to_investor'] ? 'is-private' : '' ?>">
+                    <a class="tile__img" href="<?= url('unduh.php?t=proyek&id=' . $d['id'] . '&lihat=1') ?>" target="_blank" rel="noopener"
+                       data-full="<?= url('unduh.php?t=proyek&id=' . $d['id'] . '&lihat=1') ?>" data-caption="<?= e($d['title']) ?>" data-dl="<?= url('unduh.php?t=proyek&id=' . $d['id']) ?>">
+                      <img src="<?= url('unduh.php?t=thumb&id=' . $d['id']) ?>" alt="<?= e($d['title']) ?>" loading="lazy" decoding="async">
+                      <?php if ($admin && !$d['visible_to_investor']): ?><span class="tile__lock" title="Tidak terlihat oleh investor"><?= icon('lock', 13) ?></span><?php endif; ?>
+                    </a>
+                    <div class="tile__cap"><b title="<?= e($d['title']) ?>"><?= e($d['title']) ?></b></div>
+                    <div class="tile__act">
+                      <small><?= filesize_h((int)$d['file_size']) ?></small>
+                      <?php if ($admin): ?>
+                        <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="toggle_doc"><input type="hidden" name="doc_id" value="<?= $d['id'] ?>"><input type="hidden" name="project_id" value="<?= $id ?>">
+                          <button class="iconbtn iconbtn--sm" title="<?= $d['visible_to_investor'] ? 'Terlihat investor — klik untuk sembunyikan' : 'Hanya internal — klik untuk tampilkan ke investor' ?>" aria-label="Ubah visibilitas investor"><?= icon($d['visible_to_investor'] ? 'users' : 'lock', 15) ?></button></form>
+                      <?php endif; ?>
+                      <a class="iconbtn iconbtn--sm" title="Unduh" aria-label="Unduh" href="<?= url('unduh.php?t=proyek&id=' . $d['id']) ?>"><?= icon('download', 15) ?></a>
+                      <?php if ($admin): ?>
+                        <form method="post" data-confirm="Hapus foto &quot;<?= e($d['title']) ?>&quot;?"><?= csrf_field() ?><input type="hidden" name="action" value="delete_doc"><input type="hidden" name="doc_id" value="<?= $d['id'] ?>"><input type="hidden" name="project_id" value="<?= $id ?>">
+                          <button class="iconbtn iconbtn--sm iconbtn--danger" title="Hapus" aria-label="Hapus"><?= icon('trash', 15) ?></button></form>
+                      <?php endif; ?>
+                    </div>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
+
+            <?php if ($files): ?>
+              <ul class="dlist">
+                <?php foreach ($files as $d): ?>
+                  <li>
+                    <span class="fi fi--<?= file_icon($d['original_name']) ?>"><?= e(strtoupper(pathinfo($d['original_name'], PATHINFO_EXTENSION))) ?></span>
+                    <div class="dlist__main">
+                      <a href="<?= url('unduh.php?t=proyek&id=' . $d['id'] . '&lihat=1') ?>" target="_blank" rel="noopener"><b><?= e($d['title']) ?></b></a>
+                      <small><?= $d['doc_date'] ? tgl($d['doc_date']) . ' · ' : '' ?><?= filesize_h((int)$d['file_size']) ?><?= $admin ? ' · ' . e($d['uploader'] ?? '') : '' ?><?= $d['notes'] ? ' · ' . e($d['notes']) : '' ?></small>
+                    </div>
+                    <div class="dlist__act">
+                      <?php if ($admin): ?>
+                        <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="toggle_doc"><input type="hidden" name="doc_id" value="<?= $d['id'] ?>"><input type="hidden" name="project_id" value="<?= $id ?>">
+                          <button class="vispill <?= $d['visible_to_investor'] ? 'is-on' : '' ?>" title="Klik untuk mengubah"><?= icon($d['visible_to_investor'] ? 'users' : 'lock', 13) ?> <?= $d['visible_to_investor'] ? 'Investor' : 'Internal' ?></button></form>
+                      <?php endif; ?>
+                      <a class="iconbtn" title="Lihat" aria-label="Lihat" target="_blank" rel="noopener" href="<?= url('unduh.php?t=proyek&id=' . $d['id'] . '&lihat=1') ?>"><?= icon('eye', 17) ?></a>
+                      <a class="iconbtn" title="Unduh" aria-label="Unduh" href="<?= url('unduh.php?t=proyek&id=' . $d['id']) ?>"><?= icon('download', 17) ?></a>
+                      <?php if ($admin): ?>
+                        <form method="post" data-confirm="Hapus dokumen &quot;<?= e($d['title']) ?>&quot;?"><?= csrf_field() ?><input type="hidden" name="action" value="delete_doc"><input type="hidden" name="doc_id" value="<?= $d['id'] ?>"><input type="hidden" name="project_id" value="<?= $id ?>">
+                          <button class="iconbtn iconbtn--danger" title="Hapus" aria-label="Hapus"><?= icon('trash', 17) ?></button></form>
+                      <?php endif; ?>
+                    </div>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
           </div>
         <?php endforeach; ?>
+        <?php if ($admin && $docs): ?><p class="legend"><?= icon('users', 13) ?> terlihat investor &nbsp;·&nbsp; <?= icon('lock', 13) ?> hanya internal</p><?php endif; ?>
         <?php if (count($docs) > 1): ?>
           <a class="btn btn--line btn--sm" href="<?= url('unduh.php?t=zip&id=' . $id) ?>"><?= icon('download', 16) ?> Unduh semua (ZIP)</a>
         <?php endif; ?>

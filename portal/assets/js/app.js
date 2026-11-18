@@ -17,6 +17,64 @@
     });
   });
 
+  // Lightbox galeri foto: buka layar penuh, geser kiri/kanan, tombol panah & Esc
+  document.querySelectorAll('[data-gallery]').forEach(gal => {
+    const links = [...gal.querySelectorAll('a[data-full]')];
+    if (!links.length) return;
+    let idx = 0, box, img, cap, count, dl, startX = 0;
+    const svg = d => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+    const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html) n.innerHTML = html; return n; };
+    const build = () => {
+      box = el('div', 'lb'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+      const bar = el('div', 'lb__bar'); count = el('span', 'lb__count');
+      dl = el('a', 'lb__btn', svg('<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>')); dl.title = 'Unduh';
+      const close = el('button', 'lb__btn', svg('<path d="M6 6l12 12M18 6L6 18"/>')); close.type = 'button'; close.title = 'Tutup (Esc)';
+      bar.append(count, dl, close);
+      const stage = el('div', 'lb__stage'); img = el('img'); img.alt = '';
+      const prev = el('button', 'lb__btn lb__nav lb__prev', svg('<path d="M15 6l-6 6 6 6"/>')); prev.type = 'button'; prev.title = 'Sebelumnya';
+      const next = el('button', 'lb__btn lb__nav lb__next', svg('<path d="M9 6l6 6-6 6"/>')); next.type = 'button'; next.title = 'Berikutnya';
+      stage.append(img, prev, next);
+      cap = el('div', 'lb__cap');
+      box.append(bar, stage, cap);
+      close.addEventListener('click', hide);
+      prev.addEventListener('click', () => show(idx - 1));
+      next.addEventListener('click', () => show(idx + 1));
+      stage.addEventListener('click', e => { if (e.target === stage) hide(); });
+      img.addEventListener('load', () => img.classList.remove('is-loading'));
+      box.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+      box.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - startX; if (Math.abs(dx) > 50) show(idx + (dx < 0 ? 1 : -1)); });
+      if (links.length < 2) { prev.hidden = true; next.hidden = true; }
+    };
+    const onKey = e => {
+      if (e.key === 'Escape') hide();
+      else if (e.key === 'ArrowRight') show(idx + 1);
+      else if (e.key === 'ArrowLeft') show(idx - 1);
+    };
+    function show(i) {
+      idx = (i + links.length) % links.length;
+      const a = links[idx];
+      img.classList.add('is-loading');
+      img.src = a.dataset.full;
+      img.alt = a.dataset.caption || '';
+      cap.textContent = a.dataset.caption || '';
+      count.textContent = (idx + 1) + ' / ' + links.length;
+      dl.href = a.dataset.dl;
+      const nxt = links[(idx + 1) % links.length]; if (nxt) { const p = new Image(); p.src = nxt.dataset.full; }
+    }
+    function hide() { box.remove(); document.body.classList.remove('lb-open'); document.removeEventListener('keydown', onKey); }
+    links.forEach((a, i) => a.addEventListener('click', e => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+      e.preventDefault();
+      if (!box) build();
+      document.body.append(box); document.body.classList.add('lb-open');
+      document.addEventListener('keydown', onKey);
+      show(i);
+    }));
+  });
+
+  // Lanjutkan proses bertahap otomatis (mis. kompres foto)
+  document.querySelectorAll('form[data-autosubmit]').forEach(f => setTimeout(() => f.submit(), 900));
+
   // Konfirmasi sebelum aksi berbahaya
   document.querySelectorAll('form[data-confirm]').forEach(f => {
     f.addEventListener('submit', e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); });

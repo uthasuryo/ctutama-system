@@ -41,6 +41,7 @@ if (is_post()) {
         if (!$errors && ($hasFile || !$id)) {
             [$file, $err] = store_upload($_FILES['file'] ?? null, config('storage_path'), 'legal/' . date('Y'));
             if ($err) $errors[] = $err;
+            if ($file) optimize_stored_upload($file, 'legal');
         }
         if ($errors) {
             flash('error', implode(' ', $errors));

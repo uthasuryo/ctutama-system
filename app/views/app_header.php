@@ -10,6 +10,7 @@ $menu = [
     ['kalkulator.php', 'kalkulator', 'Kalkulator Margin', 'calc', false],
     ['pesan.php', 'pesan', 'Pesan Masuk', 'mail', true],
     ['pengguna.php', 'pengguna', 'Pengguna', 'users', true],
+    ['penyimpanan.php', 'penyimpanan', 'Penyimpanan', 'disk', true],
     ['aktivitas.php', 'aktivitas', 'Log Aktivitas', 'clock', true],
 ];
 ?><!DOCTYPE html>

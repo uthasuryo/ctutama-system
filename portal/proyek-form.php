@@ -40,7 +40,8 @@ if (is_post()) {
         [$cover, $err] = store_upload($_FILES['cover'], config('cover_path'), '', IMAGE_TYPES);
         if ($err) $errors[] = 'Sampul: ' . $err;
         $coverFile = $cover ? rtrim(config('cover_path'), '/') . '/' . $cover['path'] : null;
-        if ($cover && !reencode_image($coverFile, $cover['mime'])) {
+        // Sampul tampil publik: selalu dibuat ulang (buang EXIF/GPS & isi tersisip), diputar tegak, diperkecil
+        if ($cover && optimize_image($coverFile, $cover['mime'], IMG_COVER_MAX_SIDE, IMG_DOC_QUALITY, true) === null) {
             @unlink($coverFile);
             $cover = null;
             $errors[] = 'Sampul: file gambar rusak atau tidak dapat dibaca.';

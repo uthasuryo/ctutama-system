@@ -169,4 +169,13 @@ CREATE TABLE IF NOT EXISTS security_events (
   INDEX idx_sec_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Catatan file gambar yang sudah dikompres (agar tidak diproses ulang) dan penghematannya
+CREATE TABLE IF NOT EXISTS media_optimized (
+  file_path    VARCHAR(255) PRIMARY KEY,
+  kind         VARCHAR(20)  NOT NULL,
+  before_size  INT UNSIGNED NOT NULL,
+  after_size   INT UNSIGNED NOT NULL,
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

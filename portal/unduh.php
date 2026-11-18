@@ -26,6 +26,26 @@ if ($type === 'proyek') {
     send_file(storage_file($doc['file_path']), $doc['original_name'], $doc['mime_type'], $inline);
 }
 
+if ($type === 'thumb') {
+    $doc = q_one('SELECT * FROM project_documents WHERE id = ?', [$id]);
+    if (!$doc || !is_image_mime($doc['mime_type']) || !can_view_project((int)$doc['project_id']) || (!$admin && !$doc['visible_to_investor'])) $deny();
+    $src = storage_file($doc['file_path']);
+    $thumb = thumb_path($doc['file_path']);
+    if (!$src) $deny();
+    if (!is_file($thumb) || filemtime($thumb) < filemtime($src)) {
+        if (!make_thumb($src, $doc['mime_type'], $thumb)) {
+            send_file($src, $doc['original_name'], $doc['mime_type'], true); // GD tidak ada: kirim aslinya
+        }
+    }
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: image/jpeg');
+    header('Content-Length: ' . filesize($thumb));
+    header('Cache-Control: private, max-age=86400');
+    header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+    readfile($thumb);
+    exit;
+}
+
 if ($type === 'zip') {
     if (!class_exists('ZipArchive')) exit('Ekstensi ZIP tidak tersedia di server.');
     $p = q_one('SELECT * FROM projects WHERE id = ?', [$id]);

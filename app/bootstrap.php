@@ -44,6 +44,7 @@ require APP_ROOT . '/helpers.php';
 require APP_ROOT . '/db.php';
 require APP_ROOT . '/auth.php';
 require APP_ROOT . '/upload.php';
+require APP_ROOT . '/image.php';
 require APP_ROOT . '/margin.php';
 
 function config(string $key, $default = null)

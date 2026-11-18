@@ -77,31 +77,21 @@ function store_upload(?array $file, string $baseDir, string $subDir, array $allo
 }
 
 /**
- * Buat ulang gambar lewat GD: membuang metadata (EXIF/GPS) dan isi tersembunyi,
- * sekaligus memperkecil ke maks. 2000 px. Mengembalikan false bila gambar tidak valid.
+ * Kompres file gambar yang baru diunggah ke storage privat.
+ * Mengubah $file['size'] menjadi ukuran baru dan mencatatnya agar tidak diproses ulang.
  */
-function reencode_image(string $path, string $mime, int $maxSide = 2000): bool
+function optimize_stored_upload(array &$file, string $kind): void
 {
-    if (!function_exists('imagecreatefromstring')) return true; // GD tidak tersedia: lewati
-    $data = @file_get_contents($path);
-    $img = $data !== false ? @imagecreatefromstring($data) : false;
-    if (!$img) return false;
-    $w = imagesx($img); $h = imagesy($img);
-    $scale = min(1, $maxSide / max($w, $h));
-    if ($scale < 1) {
-        $nw = (int)round($w * $scale); $nh = (int)round($h * $scale);
-        $dst = imagecreatetruecolor($nw, $nh);
-        imagealphablending($dst, false); imagesavealpha($dst, true);
-        imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
-        imagedestroy($img); $img = $dst;
+    if (!is_image_mime($file['mime'])) return;
+    $full = storage_file($file['path']);
+    if (!$full) return;
+    $r = optimize_image($full, $file['mime']);
+    if ($r === null) return;
+    $file['size'] = $r['after'];
+    try {
+        q('INSERT IGNORE INTO media_optimized (file_path, kind, before_size, after_size) VALUES (?,?,?,?)', [$file['path'], $kind, $r['before'], $r['after']]);
+    } catch (Throwable) {
     }
-    $ok = match ($mime) {
-        'image/png'  => imagepng($img, $path, 6),
-        'image/webp' => function_exists('imagewebp') ? imagewebp($img, $path, 85) : false,
-        default      => imagejpeg($img, $path, 85),
-    };
-    imagedestroy($img);
-    return (bool)$ok;
 }
 
 function storage_file(string $relPath): string
