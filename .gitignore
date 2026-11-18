@@ -1,5 +1,5 @@
 # Konfigurasi berisi password database — jangan pernah di-commit
-app/config.php
+#app/config.php
 
 # Dokumen yang diunggah pengguna (dicadangkan terpisah, bukan lewat git)
 storage/uploads/**
