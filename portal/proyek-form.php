@@ -9,6 +9,23 @@ if ($id && !$p) {
     redirect('proyek.php');
 }
 
+if (is_post() && input('action') === 'delete_project' && $p) {
+    csrf_check();
+    if (input('confirm_name') !== $p['name']) {
+        flash('error', 'Nama proyek yang diketik tidak sama. Proyek tidak dihapus.');
+        redirect('proyek-form.php?id=' . $id . '#bahaya');
+    }
+    $docs = q_all('SELECT * FROM project_documents WHERE project_id = ?', [$id]);
+    foreach ($docs as $d) { delete_stored($d['file_path']); delete_thumb($d['file_path']); }
+    q('DELETE FROM projects WHERE id = ?', [$id]); // dokumen, album, checklist, perhitungan ikut terhapus (cascade)
+    @rmdir(config('storage_path') . '/projects/' . $id);
+    @rmdir(config('storage_path') . '/thumbs/projects/' . $id);
+    if ($p['cover_image']) @unlink(rtrim(config('cover_path'), '/') . '/' . basename($p['cover_image']));
+    log_activity('hapus_proyek', $p['name'] . ' (' . count($docs) . ' file)');
+    flash('success', 'Proyek "' . $p['name'] . '" beserta ' . count($docs) . ' dokumen/fotonya dihapus.');
+    redirect('proyek.php');
+}
+
 if (is_post()) {
     csrf_check();
     $data = [
@@ -142,5 +159,17 @@ require APP_ROOT . '/views/app_header.php';
     <button class="btn btn--primary"><?= icon('check', 18) ?> <?= $p ? 'Simpan Perubahan' : 'Simpan Proyek' ?></button>
   </div>
 </form>
+
+<?php if ($p): ?>
+<section class="card card--danger formpage" id="bahaya">
+  <h3 class="card__title"><?= icon('trash', 18) ?> Hapus proyek</h3>
+  <p class="small muted">Semua dokumen, album foto, checklist, dan perhitungan margin proyek ini ikut terhapus permanen. Ketik nama proyek untuk konfirmasi.</p>
+  <form method="post" class="form">
+    <?= csrf_field() ?><input type="hidden" name="action" value="delete_project"><input type="hidden" name="id" value="<?= (int)$p['id'] ?>">
+    <label class="f"><input name="confirm_name" placeholder="<?= e($p['name']) ?>" autocomplete="off" required></label>
+    <button class="btn btn--danger btn--sm"><?= icon('trash', 16) ?> Hapus proyek ini</button>
+  </form>
+</section>
+<?php endif; ?>
 
 <?php require APP_ROOT . '/views/app_footer.php'; ?>

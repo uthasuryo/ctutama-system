@@ -274,7 +274,7 @@ function project_doc_types(): array
 {
     return [
         'Kontrak / SPK', 'Surat Penawaran', 'Purchase Order', 'Addendum', 'Berita Acara (BAST)',
-        'Invoice', 'Faktur Pajak', 'Bukti Potong', 'Bukti Pembayaran', 'Surat Jalan',
+        'Berita Acara Instalasi / UAT', 'Invoice', 'Faktur Pajak', 'Bukti Potong', 'Bukti Pembayaran', 'Surat Jalan',
         'RAB / Perhitungan Biaya', 'Laporan Progres', 'Foto Dokumentasi', 'Lainnya',
     ];
 }
@@ -325,6 +325,12 @@ function icon(string $name, int $size = 20): string
         'link'   => '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',
         'globe'  => '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/>',
         'file'   => '<path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8l-5-5z"/><path d="M14 3v5h5"/>',
+        'dots'   => '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+        'image'  => '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+        'circle' => '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2.6"/>',
+        'check-circle' => '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/>',
+        'minus-circle' => '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+        'chevron-down' => '<path d="M6 9l6 6 6-6"/>',
         'disk'   => '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
         'lock'   => '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
         'whatsapp' => '<path d="M4 20l1.3-4A8 8 0 1112 20a8 8 0 01-4-1.1L4 20z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a4 4 0 01-1.8-1.8l.8-1-1-2L9 9.5z"/>',

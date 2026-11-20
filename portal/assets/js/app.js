@@ -17,6 +17,62 @@
     });
   });
 
+  // ---------- Halaman proyek ----------
+  // Menu ⋯ (details): hanya satu terbuka, tutup saat klik di luar
+  const menus = [...document.querySelectorAll('details.dd')];
+  menus.forEach(d => d.addEventListener('toggle', () => { if (d.open) menus.forEach(o => { if (o !== d) o.open = false; }); }));
+  document.addEventListener('click', e => { menus.forEach(d => { if (d.open && !d.contains(e.target)) d.open = false; }); });
+
+  // Tombol buka/tutup form (unggah, tambah item, album baru, dll.)
+  const openPanel = (el, scroll) => {
+    el.hidden = false;
+    const f = el.querySelector('input:not([type=hidden]):not([type=checkbox]), select');
+    if (scroll) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (f && f.type !== 'file') setTimeout(() => f.focus({ preventScroll: true }), 250);
+  };
+  document.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById(btn.dataset.toggle);
+      if (!el) return;
+      const dd = btn.closest('details.dd'); if (dd) dd.open = false;
+      if (el.hidden) openPanel(el, !!dd); else el.hidden = true;
+    });
+  });
+  // Datang dari tautan "Unggah" di Ringkasan (#item-xxx): buka form item tersebut
+  if (location.hash.startsWith('#item-')) {
+    const up = document.getElementById('up-' + location.hash.slice(1));
+    if (up) openPanel(up, true);
+  }
+
+  // Album: tampilkan semua foto
+  document.querySelectorAll('[data-expand]').forEach(b => b.addEventListener('click', () => {
+    const grid = b.previousElementSibling; if (grid) grid.classList.remove('is-collapsed');
+    b.remove();
+  }));
+
+  // Mode pilih foto (hapus / pindahkan beberapa sekaligus)
+  const bulk = document.getElementById('bulkForm');
+  if (bulk) {
+    const boxes = () => [...document.querySelectorAll('input[form="bulkForm"]')];
+    const count = bulk.querySelector('[data-sel-count]');
+    const update = () => { count.textContent = boxes().filter(b => b.checked).length; };
+    document.querySelectorAll('[data-select-toggle]').forEach(b => b.addEventListener('click', () => {
+      const on = document.body.classList.toggle('is-selecting');
+      bulk.hidden = !on;
+      if (!on) boxes().forEach(x => { x.checked = false; });
+      update();
+    }));
+    document.addEventListener('change', e => { if (e.target.matches('input[form="bulkForm"]')) update(); });
+    bulk.addEventListener('submit', e => {
+      const op = e.submitter ? e.submitter.value : '';
+      const n = boxes().filter(b => b.checked).length;
+      if (!n) { e.preventDefault(); return; }
+      if (op === 'delete' && !confirm('Hapus ' + n + ' foto yang dipilih? Tindakan ini tidak bisa dibatalkan.')) e.preventDefault();
+      if (op === 'move' && !bulk.querySelector('select[name=target_album]').value) { e.preventDefault(); bulk.querySelector('select').focus(); }
+      if (op) { const h = document.createElement('input'); h.type = 'hidden'; h.name = 'op'; h.value = op; bulk.append(h); }
+    });
+  }
+
   // Lightbox galeri foto: buka layar penuh, geser kiri/kanan, tombol panah & Esc
   document.querySelectorAll('[data-gallery]').forEach(gal => {
     const links = [...gal.querySelectorAll('a[data-full]')];
@@ -63,7 +119,7 @@
     }
     function hide() { box.remove(); document.body.classList.remove('lb-open'); document.removeEventListener('keydown', onKey); }
     links.forEach((a, i) => a.addEventListener('click', e => {
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1 || document.body.classList.contains('is-selecting')) return;
       e.preventDefault();
       if (!box) build();
       document.body.append(box); document.body.classList.add('lb-open');

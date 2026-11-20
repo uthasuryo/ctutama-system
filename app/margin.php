@@ -181,15 +181,47 @@ function annual_normalize(array $in): array
     return $out;
 }
 
-/** Buat tabel yang belum ada (kalkulator, keamanan) bila database dipasang dari versi lama. */
+/** Buat tabel/kolom yang belum ada bila database dipasang dari versi lama. */
 function ensure_schema(): void
 {
-    if (!empty($_SESSION['_schema_v4'])) return;
-    $has = (int)q_val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('project_calculations', 'security_events', 'media_optimized')") === 3;
-    if (!$has) {
+    if (!empty($_SESSION['_schema_v5'])) return;
+    $need = ['project_calculations', 'security_events', 'media_optimized', 'project_albums', 'project_checklist'];
+    $have = (int)q_val('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (' . implode(',', array_fill(0, count($need), '?')) . ')', $need);
+    if ($have < count($need)) {
         db()->exec(file_get_contents(dirname(APP_ROOT) . '/database/schema.sql'));
     }
-    $_SESSION['_schema_v4'] = true;
+    $hasAlbumCol = (bool)q_val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'project_documents' AND column_name = 'album_id'");
+    if (!$hasAlbumCol) {
+        db()->exec('ALTER TABLE project_documents ADD COLUMN album_id INT UNSIGNED NULL AFTER project_id, ADD INDEX idx_pdoc_album (album_id), MODIFY doc_type VARCHAR(100) NOT NULL');
+        backfill_albums();
+    }
+    $_SESSION['_schema_v5'] = true;
+}
+
+/**
+ * Sekali jalan: kelompokkan foto dokumentasi lama ke album berdasarkan proyek, judul dasar, dan tanggal unggah.
+ * Demi keamanan, album hanya terlihat investor bila SEMUA fotonya sebelumnya terlihat.
+ */
+function backfill_albums(): void
+{
+    $rows = q_all("SELECT id, project_id, title, doc_date, created_at, visible_to_investor, uploaded_by FROM project_documents
+                   WHERE album_id IS NULL AND doc_type = 'Foto Dokumentasi' AND mime_type IN ('image/jpeg','image/png','image/webp')
+                   ORDER BY project_id, created_at");
+    $groups = [];
+    foreach ($rows as $r) {
+        $base = trim(preg_replace('/\s*\(\d+\)$/', '', (string)$r['title']));
+        $day = substr((string)($r['doc_date'] ?: $r['created_at']), 0, 10);
+        $groups[$r['project_id'] . '|' . mb_strtolower($base) . '|' . $day][] = $r + ['base' => $base, 'day' => $day];
+    }
+    foreach ($groups as $g) {
+        $first = $g[0];
+        $visible = min(array_map(fn($r) => (int)$r['visible_to_investor'], $g));
+        q('INSERT INTO project_albums (project_id, name, album_date, visible_to_investor, created_by, created_at) VALUES (?,?,?,?,?,?)',
+            [$first['project_id'], mb_substr($first['base'] ?: 'Foto ' . tgl($first['day']), 0, 150), $first['day'], $visible, $first['uploaded_by'], $first['created_at']]);
+        $aid = (int)db()->lastInsertId();
+        $ids = array_column($g, 'id');
+        q('UPDATE project_documents SET album_id = ?, visible_to_investor = ? WHERE id IN (' . implode(',', array_map('intval', $ids)) . ')', [$aid, $visible]);
+    }
 }
 
 /** Ringkasan margin tersimpan untuk satu proyek (atau null). */
