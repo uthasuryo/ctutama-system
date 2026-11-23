@@ -184,8 +184,8 @@ function annual_normalize(array $in): array
 /** Buat tabel/kolom yang belum ada bila database dipasang dari versi lama. */
 function ensure_schema(): void
 {
-    if (!empty($_SESSION['_schema_v5'])) return;
-    $need = ['project_calculations', 'security_events', 'media_optimized', 'project_albums', 'project_checklist'];
+    if (!empty($_SESSION['_schema_v6'])) return;
+    $need = ['project_calculations', 'security_events', 'media_optimized', 'project_albums', 'project_checklist', 'expenses'];
     $have = (int)q_val('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (' . implode(',', array_fill(0, count($need), '?')) . ')', $need);
     if ($have < count($need)) {
         db()->exec(file_get_contents(dirname(APP_ROOT) . '/database/schema.sql'));
@@ -195,7 +195,11 @@ function ensure_schema(): void
         db()->exec('ALTER TABLE project_documents ADD COLUMN album_id INT UNSIGNED NULL AFTER project_id, ADD INDEX idx_pdoc_album (album_id), MODIFY doc_type VARCHAR(100) NOT NULL');
         backfill_albums();
     }
-    $_SESSION['_schema_v5'] = true;
+    $hasCostCol = (bool)q_val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'projects' AND column_name = 'costs_visible_to_investor'");
+    if (!$hasCostCol) {
+        db()->exec('ALTER TABLE projects ADD COLUMN costs_visible_to_investor TINYINT(1) NOT NULL DEFAULT 0 AFTER is_public');
+    }
+    $_SESSION['_schema_v6'] = true;
 }
 
 /**

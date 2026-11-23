@@ -71,6 +71,7 @@ $pendingSize = array_sum(array_column($pending, 'file_size'));
 $stats = [
     ['Dokumen proyek', (int)q_val('SELECT COALESCE(SUM(file_size),0) FROM project_documents'), (int)q_val('SELECT COUNT(*) FROM project_documents'), 'folder'],
     ['Dokumen legal', (int)q_val('SELECT COALESCE(SUM(file_size),0) FROM legal_documents'), (int)q_val('SELECT COUNT(*) FROM legal_documents'), 'shield'],
+    ['Foto / scan bon', (int)q_val('SELECT COALESCE(SUM(file_size),0) FROM expenses WHERE file_path IS NOT NULL'), (int)q_val('SELECT COUNT(*) FROM expenses WHERE file_path IS NOT NULL'), 'wallet'],
     ['Foto sampul (publik)', dir_size((string)config('cover_path')), count(glob(rtrim((string)config('cover_path'), '/') . '/*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: []), 'globe'],
     ['Thumbnail galeri', dir_size(rtrim((string)config('storage_path'), '/') . '/thumbs'), null, 'eye'],
 ];

@@ -17,6 +17,7 @@ if (is_post() && input('action') === 'delete_project' && $p) {
     }
     $docs = q_all('SELECT * FROM project_documents WHERE project_id = ?', [$id]);
     foreach ($docs as $d) { delete_stored($d['file_path']); delete_thumb($d['file_path']); }
+    foreach (q_all('SELECT file_path FROM expenses WHERE project_id = ? AND file_path IS NOT NULL', [$id]) as $b) delete_stored($b['file_path']);
     q('DELETE FROM projects WHERE id = ?', [$id]); // dokumen, album, checklist, perhitungan ikut terhapus (cascade)
     @rmdir(config('storage_path') . '/projects/' . $id);
     @rmdir(config('storage_path') . '/thumbs/projects/' . $id);
@@ -163,7 +164,7 @@ require APP_ROOT . '/views/app_header.php';
 <?php if ($p): ?>
 <section class="card card--danger formpage" id="bahaya">
   <h3 class="card__title"><?= icon('trash', 18) ?> Hapus proyek</h3>
-  <p class="small muted">Semua dokumen, album foto, checklist, dan perhitungan margin proyek ini ikut terhapus permanen. Ketik nama proyek untuk konfirmasi.</p>
+  <p class="small muted">Semua dokumen, album foto, checklist, biaya beserta bonnya, dan perhitungan margin proyek ini ikut terhapus permanen. Ketik nama proyek untuk konfirmasi.</p>
   <form method="post" class="form">
     <?= csrf_field() ?><input type="hidden" name="action" value="delete_project"><input type="hidden" name="id" value="<?= (int)$p['id'] ?>">
     <label class="f"><input name="confirm_name" placeholder="<?= e($p['name']) ?>" autocomplete="off" required></label>

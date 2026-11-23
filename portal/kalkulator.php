@@ -86,6 +86,7 @@ if ($tab === 'tahunan') {
     if ($year < 2000 || $year > 2100) $year = (int)date('Y');
     if (!in_array($year, $years, true)) { $years[] = $year; rsort($years); }
     $annualRows = q_all('SELECT c.*, p.name, p.division FROM project_calculations c JOIN projects p ON p.id = c.project_id WHERE c.tax_year = ? ORDER BY p.name', [$year]);
+    $opsTotal = (float)q_val('SELECT COALESCE(SUM(amount - IF(has_tax_invoice, ppn_amount, 0)), 0) FROM expenses WHERE project_id IS NULL AND YEAR(expense_date) = ?', [$year]);
     $annualIn = annual_normalize(json_decode((string)q_val('SELECT inputs FROM annual_tax_inputs WHERE tax_year = ?', [$year]), true) ?: []);
     $uncalc = (int)q_val("SELECT COUNT(*) FROM projects p LEFT JOIN project_calculations c ON c.project_id = p.id
                           WHERE c.project_id IS NULL AND p.status <> 'batal' AND YEAR(COALESCE(p.start_date, p.created_at)) = ?", [$year]);
@@ -300,7 +301,8 @@ require APP_ROOT . '/views/app_header.php';
         <?= csrf_field() ?><input type="hidden" name="action" value="save_annual"><input type="hidden" name="year" value="<?= $year ?>"><input type="hidden" name="inputs" id="annualField">
         <div class="fgrid">
           <label class="f"><span>Peredaran bruto lain (di luar proyek)</span><input id="omLain" class="money" inputmode="numeric"></label>
-          <label class="f"><span>Biaya operasional setahun (gaji, sewa, dll.)</span><input id="opex" class="money" inputmode="numeric"></label>
+          <label class="f"><span>Biaya operasional setahun (gaji, sewa, dll.)</span><input id="opex" class="money" inputmode="numeric">
+            <?php if ($opsTotal > 0): ?><button type="button" class="hint-btn" data-fill="opex" data-value="<?= (int)round($opsTotal) ?>"><?= icon('wallet', 13) ?> Pakai total menu Pengeluaran: <?= rupiah($opsTotal) ?></button><?php endif; ?></label>
           <label class="f"><span>Koreksi fiskal (+/−)</span><input id="kor" class="money" data-neg="1"></label>
           <label class="f"><span>Kompensasi rugi tahun lalu</span><input id="komp" class="money" inputmode="numeric"></label>
           <label class="f"><span>PPh 23 lain yang dipotong (di luar proyek)</span><input id="p23" class="money" inputmode="numeric"></label>

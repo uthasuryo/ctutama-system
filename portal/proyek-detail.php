@@ -9,7 +9,7 @@ if (!$p || !can_view_project($id)) {
     flash('error', 'Proyek tidak ditemukan atau Anda tidak memiliki akses.');
     redirect('proyek.php');
 }
-$tabs = ['ringkasan' => 'Ringkasan', 'dokumen' => 'Dokumen', 'foto' => 'Foto'];
+$tabs = ['ringkasan' => 'Ringkasan', 'dokumen' => 'Dokumen', 'foto' => 'Foto'] + ($admin ? ['biaya' => 'Biaya'] : []);
 $tab = isset($tabs[$_GET['tab'] ?? '']) ? $_GET['tab'] : 'ringkasan';
 $self = fn(string $t = 'ringkasan', string $hash = '') => 'proyek-detail.php?id=' . $id . '&tab=' . $t . ($hash ? '#' . $hash : '');
 
@@ -165,6 +165,35 @@ if (is_post()) {
         redirect($self('foto'));
     }
 
+    /* ---------- Biaya proyek (bon pembelian) ---------- */
+    if ($action === 'add_expense' || $action === 'update_expense') {
+        $existing = $action === 'update_expense' ? q_one('SELECT * FROM expenses WHERE id = ? AND project_id = ?', [(int)input('expense_id'), $id]) : null;
+        if ($action === 'update_expense' && !$existing) redirect($self('biaya'));
+        [$eid, $errors] = save_expense_from_post($id, $existing);
+        if ($errors) {
+            flash('error', implode(' ', $errors));
+            keep_old($_POST);
+            redirect('proyek-detail.php?id=' . $id . '&tab=biaya' . ($existing ? '&edit_biaya=' . $existing['id'] : '&baru=1') . '#form-biaya');
+        }
+        log_activity($existing ? 'ubah_biaya' : 'tambah_biaya', $p['name'] . ' · ' . rupiah(parse_rupiah(input('amount'))));
+        flash('success', $existing ? 'Biaya diperbarui.' : 'Biaya ' . rupiah(parse_rupiah(input('amount'))) . ' dicatat.');
+        redirect($self('biaya'));
+    }
+    if ($action === 'delete_expense') {
+        $ex = q_one('SELECT * FROM expenses WHERE id = ? AND project_id = ?', [(int)input('expense_id'), $id]);
+        if ($ex) {
+            delete_expense($ex);
+            log_activity('hapus_biaya', $p['name'] . ' · ' . rupiah($ex['amount']));
+            flash('success', 'Biaya ' . rupiah($ex['amount']) . ' dihapus.');
+        }
+        redirect($self('biaya'));
+    }
+    if ($action === 'toggle_costs') {
+        q('UPDATE projects SET costs_visible_to_investor = 1 - costs_visible_to_investor WHERE id = ?', [$id]);
+        flash('success', $p['costs_visible_to_investor'] ? 'Total biaya disembunyikan dari investor.' : 'Total biaya sekarang terlihat oleh investor.');
+        redirect($self((string)input('return_tab', 'biaya')));
+    }
+
     /* ---------- Akses investor ---------- */
     if ($action === 'investors') {
         $ids = array_map('intval', (array)($_POST['investor_ids'] ?? []));
@@ -195,6 +224,10 @@ $byAlbum = [];
 foreach ($photos as $ph) $byAlbum[$ph['album_id']][] = $ph;
 $photoCount = count($photos);
 $recent = array_slice(array_reverse($photos), 0, 8);
+
+$expenses = q_all('SELECT * FROM expenses WHERE project_id = ? ORDER BY expense_date DESC, id DESC', [$id]);
+$xt = expense_totals($expenses);
+$editExpense = ($admin && !empty($_GET['edit_biaya'])) ? q_one('SELECT * FROM expenses WHERE id = ? AND project_id = ?', [(int)$_GET['edit_biaya'], $id]) : null;
 
 $investors = $admin ? q_all("SELECT u.id, u.name, u.email, pi.user_id IS NOT NULL has_access
                              FROM users u LEFT JOIN project_investors pi ON pi.user_id = u.id AND pi.project_id = ?
@@ -282,7 +315,7 @@ require APP_ROOT . '/views/app_header.php';
 
 <nav class="ptabs" aria-label="Bagian proyek">
   <?php foreach ($tabs as $k => $label):
-    $badge = $k === 'dokumen' ? $ck['done'] . '/' . $ck['total'] : ($k === 'foto' ? $photoCount : ''); ?>
+    $badge = match ($k) { 'dokumen' => $ck['done'] . '/' . $ck['total'], 'foto' => $photoCount, 'biaya' => $xt['count'] ?: '', default => '' }; ?>
     <a href="<?= url($self($k)) ?>" class="<?= $tab === $k ? 'is-on' : '' ?>" <?= $tab === $k ? 'aria-current="page"' : '' ?>>
       <?= e($label) ?><?php if ($badge !== ''): ?> <span class="ptabs__n <?= $k === 'dokumen' && $ck['done'] < $ck['total'] ? 'is-warn' : '' ?>"><?= e((string)$badge) ?></span><?php endif; ?>
     </a>
@@ -421,6 +454,56 @@ require APP_ROOT . '/views/app_header.php';
       <?php endif; ?>
     </section>
 
+<?php elseif ($tab === 'biaya'): /* ======================= BIAYA ======================= */
+    $plan = $calc ? (float)$calc['total_cost'] : null;
+    $sales = $calc ? (float)$calc['net_sales'] : (float)$p['contract_value'];
+    $usage = $plan ? $xt['net'] / $plan * 100 : null; ?>
+    <section class="card">
+      <div class="card__head">
+        <h3><?= icon('chart', 18) ?> Rencana vs aktual</h3>
+        <a class="link" href="<?= url('kalkulator.php?proyek=' . $id) ?>">Kalkulator →</a>
+      </div>
+      <div class="xsum">
+        <div><small>Biaya aktual</small><b><?= rupiah($xt['net']) ?></b><span class="muted small"><?= $xt['count'] ?> transaksi<?= $xt['ppn'] ? ' · tanpa PPN berfaktur' : '' ?></span></div>
+        <div><small>Rencana (kalkulator)</small><b><?= $plan !== null ? rupiah($plan) : '–' ?></b><span class="muted small"><?= $plan !== null ? 'biaya di luar PPN masukan' : 'belum dihitung' ?></span></div>
+        <div><small>PPN masukan berfaktur</small><b><?= rupiah($xt['ppn']) ?></b><span class="muted small">bisa dikreditkan</span></div>
+      </div>
+      <?php if ($plan): ?>
+        <div class="budget">
+          <div class="bar <?= $usage > 100 ? 'bar--over' : ($usage > 85 ? 'bar--warn' : 'bar--ok') ?>"><i style="width:<?= min(100, round($usage)) ?>%"></i></div>
+          <p class="small"><b><?= number_format($usage, 0, ',', '.') ?>%</b> dari rencana terpakai<?= $usage > 100 ? ' — <span class="neg">melebihi rencana ' . rupiah($xt['net'] - $plan) . '</span>' : ' · sisa ' . rupiah($plan - $xt['net']) ?>.
+            <?php if ($sales > 0): ?><br>Margin sebelum pajak: rencana <b><?= number_format(($sales - $plan) / $sales * 100, 1, ',', '.') ?>%</b> · dari biaya yang sudah tercatat <b class="<?= $sales - $xt['net'] < 0 ? 'neg' : '' ?>"><?= number_format(($sales - $xt['net']) / $sales * 100, 1, ',', '.') ?>%</b><?= $usage < 100 ? ' <span class="muted">(akan turun bila masih ada biaya yang belum dicatat)</span>' : '' ?>.<?php endif; ?></p>
+        </div>
+      <?php elseif ($xt['count']): ?>
+        <p class="muted small">Hitung proyek ini di <a class="link" href="<?= url('kalkulator.php?proyek=' . $id) ?>">kalkulator margin</a> untuk membandingkan rencana dengan biaya aktual.</p>
+      <?php endif; ?>
+      <?= render_category_bars($xt['cats'], $xt['total']) ?>
+      <?php if ($xt['noReceipt']): ?><p class="note"><?= icon('alert', 14) ?> <?= $xt['noReceipt'] ?> biaya belum ada foto bonnya.</p><?php endif; ?>
+    </section>
+
+    <section class="card">
+      <div class="card__head">
+        <h3>Daftar biaya <span class="count"><?= $xt['count'] ?></span></h3>
+        <?php if (!$editExpense): ?><button type="button" class="btn btn--primary btn--sm" data-toggle="form-biaya"><?= icon('plus', 16) ?> Catat biaya</button><?php endif; ?>
+      </div>
+      <?= render_expense_form([
+          'id' => 'form-biaya', 'hidden' => !$editExpense && empty($_GET['baru']), 'class' => 'upbox--flush',
+          'title' => $editExpense ? 'Ubah biaya' : '',
+          'fields' => ['action' => $editExpense ? 'update_expense' : 'add_expense', 'project_id' => $id] + ($editExpense ? ['expense_id' => $editExpense['id']] : []),
+          'categories' => EXPENSE_CATS_PROJECT, 'expense' => $editExpense,
+          'cancel' => $editExpense ? url($self('biaya')) : '',
+          'vendorHint' => 'Principal, toko, ekspedisi…', 'descHint' => 'mis. 20 unit kursi kerja',
+      ]) ?>
+      <?php if ($expenses): ?>
+        <?= render_expense_list($expenses, [
+            'editUrl' => fn($r) => url('proyek-detail.php?id=' . $id . '&tab=biaya&edit_biaya=' . $r['id'] . '#form-biaya'),
+            'deleteFields' => ['action' => 'delete_expense', 'project_id' => $id],
+        ]) ?>
+      <?php else: ?>
+        <div class="empty"><?= icon('file', 30) ?><p>Belum ada biaya. Catat setiap pembelian barang, ongkos kirim, atau jasa untuk proyek ini — lengkap dengan foto bonnya.</p></div>
+      <?php endif; ?>
+    </section>
+
 <?php else: /* ======================= FOTO ======================= */ ?>
     <?php if ($admin): ?>
       <div class="ftools">
@@ -531,6 +614,20 @@ require APP_ROOT . '/views/app_header.php';
         <a class="btn btn--<?= $admin ? 'primary' : 'line' ?> btn--block btn--sm" href="<?= url('kalkulator.php?proyek=' . $id) ?>"><?= icon('calc', 16) ?> <?= $admin ? 'Hitung margin' : 'Coba simulasi' ?></a>
       <?php endif; ?>
     </section>
+
+    <?php if ($admin || $p['costs_visible_to_investor']): ?>
+      <section class="card">
+        <div class="card__head"><h3><?= icon('file', 18) ?> Biaya proyek</h3><?php if ($admin): ?><a class="link" href="<?= url($self('biaya')) ?>">Rincian →</a><?php endif; ?></div>
+        <div class="mcard__big"><?= rupiah($xt['total']) ?></div>
+        <p class="muted small"><?= $admin ? $xt['count'] . ' transaksi tercatat' : 'Total biaya yang sudah dikeluarkan untuk proyek ini' ?></p>
+        <?php if ($admin): ?>
+          <form method="post" class="costvis">
+            <?= csrf_field() ?><?= $hidden(['action' => 'toggle_costs', 'project_id' => $id, 'return_tab' => $tab]) ?>
+            <button class="vispill <?= $p['costs_visible_to_investor'] ? 'is-on' : '' ?>"><?= icon($p['costs_visible_to_investor'] ? 'users' : 'lock', 13) ?> <?= $p['costs_visible_to_investor'] ? 'Total terlihat investor' : 'Hanya internal' ?></button>
+          </form>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
 
     <?php if ($admin): ?>
       <section class="card" id="akses">

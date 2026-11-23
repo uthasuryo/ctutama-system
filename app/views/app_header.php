@@ -8,6 +8,7 @@ $menu = [
     ['proyek.php', 'proyek', 'Proyek', 'folder', false],
     ['legal.php', 'legal', 'Dokumen Legal', 'shield', false],
     ['kalkulator.php', 'kalkulator', 'Kalkulator Margin', 'calc', false],
+    ['pengeluaran.php', 'pengeluaran', 'Pengeluaran', 'wallet', true],
     ['pesan.php', 'pesan', 'Pesan Masuk', 'mail', true],
     ['pengguna.php', 'pengguna', 'Pengguna', 'users', true],
     ['penyimpanan.php', 'penyimpanan', 'Penyimpanan', 'disk', true],

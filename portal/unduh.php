@@ -26,6 +26,13 @@ if ($type === 'proyek') {
     send_file(storage_file($doc['file_path']), $doc['original_name'], $doc['mime_type'], $inline);
 }
 
+if ($type === 'bon') {
+    if (!$admin) $deny(); // bon & rincian biaya hanya untuk admin
+    $ex = q_one('SELECT * FROM expenses WHERE id = ? AND file_path IS NOT NULL', [$id]);
+    if (!$ex) $deny();
+    send_file(storage_file($ex['file_path']), $ex['original_name'], $ex['mime_type'], $inline);
+}
+
 if ($type === 'thumb') {
     $doc = q_one('SELECT * FROM project_documents WHERE id = ?', [$id]);
     if (!$doc || !is_image_mime($doc['mime_type']) || !can_view_project((int)$doc['project_id']) || (!$admin && !$doc['visible_to_investor'])) $deny();

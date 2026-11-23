@@ -17,7 +17,25 @@
     });
   });
 
+  // ---------- Formulir biaya: faktur pajak & PPN otomatis (11/111 dari nominal) ----------
+  document.querySelectorAll('[data-faktur]').forEach(chk => {
+    const form = chk.closest('form');
+    const wrap = form.querySelector('.fakt__ppn');
+    const ppn = form.querySelector('[data-ppn]');
+    const amt = form.querySelector('[data-amount]');
+    const num = el => Number((el.value || '').replace(/[^\d]/g, '')) || 0;
+    let auto = !ppn.value;
+    const fill = () => { if (chk.checked && auto) { const a = num(amt); ppn.value = a ? Math.round(a - a / 1.11).toLocaleString('id-ID') : ''; } };
+    chk.addEventListener('change', () => { wrap.hidden = !chk.checked; fill(); });
+    amt.addEventListener('input', fill);
+    ppn.addEventListener('input', () => { auto = !ppn.value; });
+  });
+
   // ---------- Halaman proyek ----------
+  // Tab aktif selalu terlihat di layar sempit
+  const onTab = document.querySelector('.ptabs a.is-on');
+  if (onTab) onTab.scrollIntoView({ block: 'nearest', inline: 'center' });
+
   // Menu ⋯ (details): hanya satu terbuka, tutup saat klik di luar
   const menus = [...document.querySelectorAll('details.dd')];
   menus.forEach(d => d.addEventListener('toggle', () => { if (d.open) menus.forEach(o => { if (o !== d) o.open = false; }); }));

@@ -9,7 +9,7 @@ $labels = [
     'unggah_dok_proyek' => 'Unggah dokumen proyek', 'hapus_dok_proyek' => 'Hapus dokumen proyek', 'unduh_dok_proyek' => 'Unduh dokumen proyek', 'unduh_zip_proyek' => 'Unduh ZIP proyek',
     'akses_investor' => 'Ubah akses investor', 'tambah_pengguna' => 'Tambah pengguna', 'ubah_pengguna' => 'Ubah pengguna',
     'hapus_pengguna' => 'Hapus pengguna', 'status_pengguna' => 'Ubah status pengguna', 'ganti_sandi' => 'Ganti kata sandi',
-    'kompres_foto' => 'Kompres foto', 'album_baru' => 'Album foto baru', 'album_tambah_foto' => 'Tambah foto ke album', 'album_hapus' => 'Hapus album',
+    'kompres_foto' => 'Kompres foto', 'tambah_biaya' => 'Catat biaya', 'ubah_biaya' => 'Ubah biaya', 'hapus_biaya' => 'Hapus biaya', 'ekspor_biaya' => 'Ekspor CSV biaya', 'album_baru' => 'Album foto baru', 'album_tambah_foto' => 'Tambah foto ke album', 'album_hapus' => 'Hapus album',
     'album_visibilitas' => 'Ubah visibilitas album', 'checklist_tambah' => 'Tambah item checklist', 'simpan_margin' => 'Simpan perhitungan margin', 'hapus_margin' => 'Hapus perhitungan margin', 'simpan_pajak_tahunan' => 'Simpan data pajak tahunan',
 ];
 $page = max(1, (int)($_GET['hal'] ?? 1));
