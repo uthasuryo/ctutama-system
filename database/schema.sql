@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS projects (
   summary         VARCHAR(300) NULL,
   description     TEXT NULL,
   is_public       TINYINT(1) NOT NULL DEFAULT 0,
+  costs_visible_to_investor TINYINT(1) NOT NULL DEFAULT 0,
   cover_image     VARCHAR(255) NULL,
   created_by      INT UNSIGNED NULL,
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -73,8 +74,9 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS project_documents (
   id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   project_id          INT UNSIGNED NOT NULL,
+  album_id            INT UNSIGNED NULL,
   title               VARCHAR(200) NOT NULL,
-  doc_type            VARCHAR(60)  NOT NULL,
+  doc_type            VARCHAR(100) NOT NULL,
   doc_date            DATE NULL,
   notes               VARCHAR(300) NULL,
   visible_to_investor TINYINT(1) NOT NULL DEFAULT 1,
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS project_documents (
   uploaded_by         INT UNSIGNED NULL,
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_pdoc_project (project_id),
+  INDEX idx_pdoc_album (album_id),
   CONSTRAINT fk_pdoc_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   CONSTRAINT fk_pdoc_user FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -176,6 +179,56 @@ CREATE TABLE IF NOT EXISTS media_optimized (
   before_size  INT UNSIGNED NOT NULL,
   after_size   INT UNSIGNED NOT NULL,
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Album foto proyek (visibilitas investor diatur per album)
+CREATE TABLE IF NOT EXISTS project_albums (
+  id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id          INT UNSIGNED NOT NULL,
+  name                VARCHAR(150) NOT NULL,
+  album_date          DATE NULL,
+  visible_to_investor TINYINT(1) NOT NULL DEFAULT 1,
+  created_by          INT UNSIGNED NULL,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_album_project (project_id),
+  CONSTRAINT fk_album_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  CONSTRAINT fk_album_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Penyesuaian checklist dokumen per proyek: item tambahan (custom) dan item yang tidak diperlukan (skip)
+CREATE TABLE IF NOT EXISTS project_checklist (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id  INT UNSIGNED NOT NULL,
+  doc_type    VARCHAR(100) NOT NULL,
+  kind        ENUM('custom','skip') NOT NULL,
+  stage       VARCHAR(20) NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_checklist (project_id, doc_type, kind),
+  CONSTRAINT fk_checklist_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Biaya: bon pembelian per proyek (project_id terisi) dan pengeluaran operasional kantor (project_id NULL)
+CREATE TABLE IF NOT EXISTS expenses (
+  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id       INT UNSIGNED NULL,
+  expense_date     DATE NOT NULL,
+  category         VARCHAR(40)  NOT NULL,
+  vendor           VARCHAR(150) NULL,
+  description      VARCHAR(255) NULL,
+  amount           DECIMAL(18,2) NOT NULL,
+  has_tax_invoice  TINYINT(1) NOT NULL DEFAULT 0,
+  ppn_amount       DECIMAL(18,2) NOT NULL DEFAULT 0,
+  file_path        VARCHAR(255) NULL,
+  original_name    VARCHAR(255) NULL,
+  mime_type        VARCHAR(100) NULL,
+  file_size        INT UNSIGNED NULL,
+  created_by       INT UNSIGNED NULL,
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_exp_project (project_id, expense_date),
+  INDEX idx_exp_date (expense_date),
+  CONSTRAINT fk_exp_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  CONSTRAINT fk_exp_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
