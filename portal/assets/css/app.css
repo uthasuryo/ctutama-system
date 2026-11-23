@@ -676,3 +676,19 @@ body.lb-open { overflow: hidden; }
   .ptabs a { flex: 1 0 auto; padding: 9px 9px; font-size: .82rem; gap: 5px; }
   .ptabs__n { font-size: .68rem; padding: 1px 6px; }
 }
+
+/* Info sistem */
+.side__ver { display: block; padding: 8px 12px 0; font-size: .72rem; color: rgba(255, 255, 255, .38); }
+.sysver { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; border-left: 5px solid var(--green); }
+.sysver.is-bad { border-left-color: var(--red); }
+.sysver__ic { color: var(--green); flex: none; }
+.sysver.is-bad .sysver__ic { color: var(--red); }
+.sysver h3 { font-size: 1.05rem; margin-bottom: 2px; }
+.sysver p { margin: 0; }
+.syslist { list-style: none; margin: 6px 0 14px; padding: 0; display: grid; gap: 4px; font-size: .84rem; }
+.syslist li { display: flex; align-items: center; gap: 6px; }
+.syschk { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.syschk li { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; }
+.syschk li > .ic { margin-top: 2px; }
+.syschk .ok > .ic { color: var(--green); } .syschk .bad > .ic { color: var(--red); } .syschk .warn > .ic { color: var(--amber); }
+.syschk small { display: block; color: var(--muted); font-size: .78rem; }

@@ -37,6 +37,12 @@ function redirect(string $path): never
     exit;
 }
 
+/** Versi kode yang terpasang (dibuat otomatis oleh build-deploy.sh). */
+function app_version(): array
+{
+    return $GLOBALS['APP_VERSION'] ?? ['commit' => 'dev', 'date' => null, 'files' => 0];
+}
+
 /** Tampilkan halaman 404 milik website/portal yang sedang berjalan, lalu berhenti. */
 function not_found(): never
 {

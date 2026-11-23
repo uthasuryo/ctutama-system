@@ -12,6 +12,7 @@ $menu = [
     ['pesan.php', 'pesan', 'Pesan Masuk', 'mail', true],
     ['pengguna.php', 'pengguna', 'Pengguna', 'users', true],
     ['penyimpanan.php', 'penyimpanan', 'Penyimpanan', 'disk', true],
+    ['sistem.php', 'sistem', 'Info Sistem', 'chip', true],
     ['aktivitas.php', 'aktivitas', 'Log Aktivitas', 'clock', true],
 ];
 ?><!DOCTYPE html>
@@ -45,6 +46,7 @@ $menu = [
     </nav>
     <div class="side__foot">
       <a href="<?= site_url('') ?>" target="_blank" rel="noopener"><?= icon('globe', 18) ?><span>Lihat Website</span></a>
+      <?php if ($me['role'] === 'admin'): ?><span class="side__ver">Versi <?= e(app_version()['commit']) ?><?= app_version()['date'] ? ' · ' . e(tgl(app_version()['date'])) : '' ?></span><?php endif; ?>
     </div>
   </aside>
   <div class="side__scrim" id="sideScrim"></div>
