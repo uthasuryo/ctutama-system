@@ -48,8 +48,9 @@ function save_expense_from_post(?int $projectId, ?array $existing): array
     if ($ppn < 0 || ($amount && $ppn > $amount)) $errors[] = 'PPN tidak boleh melebihi nominal.';
 
     $file = null;
-    if (!$errors && ($_FILES['receipt']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-        [$file, $err] = store_upload($_FILES['receipt'], config('storage_path'), 'expenses/' . substr($date, 0, 4), EXPENSE_FILE_TYPES);
+    $receipt = request_files('receipt')[0] ?? null;
+    if (!$errors && $receipt) {
+        [$file, $err] = store_upload($receipt, config('storage_path'), 'expenses/' . substr($date, 0, 4), EXPENSE_FILE_TYPES);
         if ($err) $errors[] = 'Bon: ' . $err;
         elseif ($file) optimize_stored_upload($file, 'bon');
     }
@@ -121,7 +122,7 @@ function render_expense_form(array $o): string
       <?php foreach ($o['fields'] as $k => $val): ?><input type="hidden" name="<?= e($k) ?>" value="<?= e($val) ?>"><?php endforeach; ?>
       <?php if (!empty($o['title'])): ?><h3 class="card__title"><?= e($o['title']) ?></h3><?php endif; ?>
       <div class="fgrid">
-        <label class="f"><span>Tanggal</span><input type="date" name="expense_date" required value="<?= e($v('expense_date', date('Y-m-d'))) ?>"></label>
+        <label class="f"><span>Tanggal</span><input type="date" name="expense_date" required max="<?= date('Y-m-d', strtotime('+1 day')) ?>" value="<?= e($v('expense_date', date('Y-m-d'))) ?>"></label>
         <label class="f"><span>Kategori</span>
           <select name="category" required>
             <?php foreach ($cats as $c): ?><option <?= $v('category', $cats[0]) === $c ? 'selected' : '' ?>><?= e($c) ?></option><?php endforeach; ?>

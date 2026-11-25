@@ -33,7 +33,7 @@ function store_upload(?array $file, string $baseDir, string $subDir, array $allo
     }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         $msg = match ($file['error']) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Ukuran file melebihi batas server.',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Ukuran file melebihi batas server (' . ini_get('upload_max_filesize') . '). Muat ulang halaman lalu coba lagi agar file dikirim bertahap.',
             UPLOAD_ERR_PARTIAL => 'File hanya terunggah sebagian. Coba lagi.',
             default => 'Gagal mengunggah file (kode ' . $file['error'] . ').',
         };
@@ -41,9 +41,11 @@ function store_upload(?array $file, string $baseDir, string $subDir, array $allo
     }
     $max = (int)config('max_upload_mb', 25) * 1024 * 1024;
     if ($file['size'] > $max) {
-        return [null, 'Ukuran file maksimal ' . config('max_upload_mb', 25) . ' MB.'];
+        return [null, 'Ukuran file ' . filesize_h((int)$file['size']) . ', maksimal ' . config('max_upload_mb', 25) . ' MB.'];
     }
-    if (!is_uploaded_file($file['tmp_name'])) {
+    // File biasa harus berasal dari unggahan PHP; file rakitan (upload bertahap) harus berada di folder sementara milik pengguna ini
+    $chunked = !empty($file['chunked']);
+    if ($chunked ? !is_chunk_file((string)$file['tmp_name']) : !is_uploaded_file($file['tmp_name'])) {
         return [null, 'Unggahan tidak valid.'];
     }
 
@@ -63,7 +65,8 @@ function store_upload(?array $file, string $baseDir, string $subDir, array $allo
         return [null, 'Folder penyimpanan tidak dapat dibuat. Periksa izin folder storage.'];
     }
     $stored = date('Ymd') . '-' . bin2hex(random_bytes(12)) . '.' . $ext;
-    if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $stored)) {
+    $moved = $chunked ? @rename($file['tmp_name'], $dir . '/' . $stored) : move_uploaded_file($file['tmp_name'], $dir . '/' . $stored);
+    if (!$moved) {
         return [null, 'File tidak dapat disimpan. Periksa izin folder storage.'];
     }
     @chmod($dir . '/' . $stored, 0640);
@@ -135,4 +138,97 @@ function send_file(string $fullPath, string $downloadName, string $mime, bool $i
     }
     readfile($fullPath);
     exit;
+}
+
+
+/* =============================================================
+   Upload bertahap (chunked) untuk file besar.
+   Browser memotong file menjadi potongan kecil dan mengirimnya satu per satu
+   ke portal/upload-chunk.php, sehingga tidak terkena batas post_max_size /
+   upload_max_filesize server dan bisa diulang per potongan bila koneksi putus.
+   Formulir lalu mengirim "token" pengganti file: <nama-field>__chunked[].
+   ============================================================= */
+
+/** Ubah nilai ini seperti "8M" / "1G" menjadi byte. */
+function ini_bytes(string $v): int
+{
+    $v = trim($v);
+    if ($v === '' || $v === '-1') return PHP_INT_MAX;
+    $n = (float)$v;
+    return (int)match (strtolower(substr($v, -1))) { 'g' => $n * 1073741824, 'm' => $n * 1048576, 'k' => $n * 1024, default => $n };
+}
+
+function max_upload_bytes(): int
+{
+    return (int)config('max_upload_mb', 25) * 1048576;
+}
+
+/** Ukuran potongan: maks. 4 MB, dan selalu di bawah batas unggah/POST server. */
+function chunk_size_bytes(): int
+{
+    $limit = min(ini_bytes((string)ini_get('upload_max_filesize')), ini_bytes((string)ini_get('post_max_size')) - 65536);
+    return max(262144, min(4 * 1048576, (int)($limit * 0.9)));
+}
+
+function chunk_dir(): string
+{
+    $d = rtrim((string)config('storage_path'), '/') . '/tmp-uploads';
+    if (!is_dir($d)) @mkdir($d, 0750, true);
+    return $d;
+}
+
+function chunk_paths(string $id): array
+{
+    $u = (int)(current_user()['id'] ?? 0);
+    $b = chunk_dir() . '/u' . $u . '-' . $id;
+    return ['part' => $b . '.part', 'meta' => $b . '.json', 'done' => $b . '.done'];
+}
+
+function is_chunk_file(string $path): bool
+{
+    $real = realpath($path);
+    $dir = realpath(chunk_dir());
+    $u = (int)(current_user()['id'] ?? 0);
+    return $real && $dir && str_starts_with($real, $dir . DIRECTORY_SEPARATOR)
+        && str_starts_with(basename($real), 'u' . $u . '-') && str_ends_with($real, '.done');
+}
+
+/**
+ * Semua file untuk satu field formulir, dari unggahan biasa maupun upload bertahap,
+ * dalam format seragam [name, tmp_name, error, size, (chunked)].
+ */
+function request_files(string $field): array
+{
+    $out = [];
+    $f = $_FILES[$field] ?? null;
+    if ($f) {
+        if (is_array($f['name'])) {
+            foreach (array_keys($f['name']) as $i) {
+                if (($f['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+                $out[] = ['name' => $f['name'][$i], 'type' => $f['type'][$i], 'tmp_name' => $f['tmp_name'][$i], 'error' => $f['error'][$i], 'size' => $f['size'][$i]];
+            }
+        } elseif (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $out[] = $f;
+        }
+    }
+    foreach ((array)($_POST[$field . '__chunked'] ?? []) as $id) {
+        if (!is_string($id) || !preg_match('/^[a-f0-9]{32}$/', $id)) continue;
+        $p = chunk_paths($id);
+        $meta = is_file($p['meta']) ? json_decode((string)file_get_contents($p['meta']), true) : null;
+        if (!$meta || !is_file($p['done'])) {
+            $out[] = ['name' => 'file', 'tmp_name' => '', 'error' => UPLOAD_ERR_PARTIAL, 'size' => 0];
+            continue;
+        }
+        @unlink($p['meta']);
+        register_shutdown_function(fn() => @unlink($p['done'])); // sisa yang tidak jadi disimpan ikut dibersihkan
+        $out[] = ['name' => (string)$meta['name'], 'tmp_name' => $p['done'], 'error' => UPLOAD_ERR_OK, 'size' => (int)filesize($p['done']), 'chunked' => true];
+    }
+    return $out;
+}
+
+/** Bila request POST melebihi post_max_size, PHP mengosongkan $_POST & $_FILES. */
+function post_too_large(): bool
+{
+    $len = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+    return ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !$_POST && !$_FILES && $len > ini_bytes((string)ini_get('post_max_size'));
 }

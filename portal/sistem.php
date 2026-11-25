@@ -41,7 +41,8 @@ foreach (['storage/uploads' => config('storage_path'), 'uploads/covers' => confi
     $checks[] = ['Folder ' . $label . ' bisa ditulis', is_dir((string)$dir) && is_writable((string)$dir), 'Periksa izin folder (755/750) lewat File Manager.'];
 }
 $upMax = ini_get('upload_max_filesize');
-$checks[] = ['Batas unggah ' . $upMax . ' / POST ' . ini_get('post_max_size'), (int)$upMax >= 10, 'Naikkan upload_max_filesize & post_max_size di Konfigurasi PHP website portal.', true];
+$checks[] = ['Maks. ' . (int)config('max_upload_mb', 25) . ' MB per file · dikirim bertahap per ' . filesize_h(chunk_size_bytes()) . ' (batas server ' . $upMax . ' / POST ' . ini_get('post_max_size') . ')',
+    is_dir(chunk_dir()) && is_writable(chunk_dir()), 'Folder storage/uploads/tmp-uploads tidak dapat ditulis. Periksa izin folder storage.', true];
 
 /* ---------- Database ---------- */
 $tables = array_column(q_all('SELECT table_name t FROM information_schema.tables WHERE table_schema = DATABASE()'), 't');

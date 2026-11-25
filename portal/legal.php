@@ -37,9 +37,10 @@ if (is_post()) {
         if (!in_array($data['category'], legal_categories(), true)) $errors[] = 'Pilih kategori dokumen.';
 
         $file = null;
-        $hasFile = ($_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        $upFile = request_files('file')[0] ?? null;
+        $hasFile = $upFile !== null;
         if (!$errors && ($hasFile || !$id)) {
-            [$file, $err] = store_upload($_FILES['file'] ?? null, config('storage_path'), 'legal/' . date('Y'));
+            [$file, $err] = store_upload($upFile, config('storage_path'), 'legal/' . date('Y'));
             if ($err) $errors[] = $err;
             if ($file) optimize_stored_upload($file, 'legal');
         }
@@ -176,7 +177,7 @@ require APP_ROOT . '/views/app_header.php';
       </div>
       <div class="fgrid">
         <label class="f"><span>Tanggal terbit</span><input type="date" name="issued_date" value="<?= e($f('issued_date')) ?>"></label>
-        <label class="f"><span>Berlaku sampai</span><input type="date" name="expiry_date" value="<?= e($f('expiry_date')) ?>"></label>
+        <label class="f"><span>Berlaku sampai</span><input type="date" name="expiry_date" data-after="issued_date" data-presets="1,2,3,5" value="<?= e($f('expiry_date')) ?>"></label>
       </div>
       <label class="f"><span>Catatan</span><textarea name="notes" rows="2"><?= e($f('notes')) ?></textarea></label>
       <label class="drop" data-drop>

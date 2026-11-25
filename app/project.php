@@ -112,21 +112,20 @@ function build_checklist(array $project, array $docs, bool $admin): array
  * Simpan beberapa file unggahan ke proyek.
  * @return array{0:int, 1:array} [jumlah tersimpan, daftar error]
  */
-function save_project_uploads(int $projectId, ?array $files, array $meta, array $allowed = DOC_TYPES): array
+/** $files: daftar dari request_files('files'). */
+function save_project_uploads(int $projectId, array $files, array $meta, array $allowed = DOC_TYPES): array
 {
-    $n = is_array($files['name'] ?? null) ? count($files['name']) : 0;
-    if ($n === 0 || ($n === 1 && ($files['error'][0] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE)) {
+    $n = count($files);
+    if ($n === 0) {
         return [0, ['Pilih file yang akan diunggah.']];
     }
     $saved = 0;
     $errors = [];
     $title = trim((string)($meta['title'] ?? ''));
     $offset = (int)($meta['number_from'] ?? 0);
-    for ($i = 0; $i < $n; $i++) {
-        $one = ['name' => $files['name'][$i], 'type' => $files['type'][$i], 'tmp_name' => $files['tmp_name'][$i], 'error' => $files['error'][$i], 'size' => $files['size'][$i]];
-        if ($one['error'] === UPLOAD_ERR_NO_FILE) continue;
+    foreach ($files as $one) {
         [$file, $err] = store_upload($one, config('storage_path'), 'projects/' . $projectId, $allowed);
-        if ($err) { $errors[] = $files['name'][$i] . ': ' . $err; continue; }
+        if ($err) { $errors[] = basename((string)$one['name']) . ': ' . $err; continue; }
         optimize_stored_upload($file, 'proyek');
         $num = $offset + $saved + 1;
         $docTitle = $title !== '' ? (($n > 1 || $offset) ? $title . ' (' . $num . ')' : $title) : pathinfo($file['original'], PATHINFO_FILENAME);

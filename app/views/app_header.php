@@ -28,7 +28,7 @@ $menu = [
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<?= asset('css/app.css') ?>">
 </head>
-<body>
+<body<?php if ($me['role'] === 'admin'): ?> data-chunk-url="<?= e(url('upload-chunk.php')) ?>" data-chunk-size="<?= chunk_size_bytes() ?>" data-max-upload="<?= max_upload_bytes() ?>" data-csrf="<?= e(csrf_token()) ?>"<?php endif; ?>>
 <div class="shell">
   <aside class="side" id="side">
     <a class="side__brand" href="<?= url('index.php') ?>">

@@ -54,8 +54,9 @@ if (is_post()) {
     if ($data['start_date'] && $data['end_date'] && $data['end_date'] < $data['start_date']) $errors[] = 'Tanggal selesai tidak boleh sebelum tanggal mulai.';
 
     $cover = null;
-    if (!$errors && ($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-        [$cover, $err] = store_upload($_FILES['cover'], config('cover_path'), '', IMAGE_TYPES);
+    $coverFile = request_files('cover')[0] ?? null;
+    if (!$errors && $coverFile) {
+        [$cover, $err] = store_upload($coverFile, config('cover_path'), '', IMAGE_TYPES);
         if ($err) $errors[] = 'Sampul: ' . $err;
         $coverFile = $cover ? rtrim(config('cover_path'), '/') . '/' . $cover['path'] : null;
         // Sampul tampil publik: selalu dibuat ulang (buang EXIF/GPS & isi tersisip), diputar tegak, diperkecil
@@ -129,7 +130,7 @@ require APP_ROOT . '/views/app_header.php';
       <label class="f"><span>Nomor kontrak / SPK / PO</span><input name="contract_number" maxlength="120" value="<?= e($f('contract_number')) ?>"></label>
       <label class="f"><span>Nilai kontrak (Rp)</span><input name="contract_value" inputmode="numeric" data-rupiah value="<?= e($cv) ?>" placeholder="0"></label>
       <label class="f"><span>Tanggal mulai</span><input type="date" name="start_date" value="<?= e($f('start_date')) ?>"></label>
-      <label class="f"><span>Tanggal selesai</span><input type="date" name="end_date" value="<?= e($f('end_date')) ?>"></label>
+      <label class="f"><span>Tanggal selesai</span><input type="date" name="end_date" data-after="start_date" value="<?= e($f('end_date')) ?>"></label>
       <label class="f"><span>Status</span>
         <select name="status"><?php foreach (project_statuses() as $k => $v): ?><option value="<?= $k ?>" <?= $f('status', 'berjalan') === $k ? 'selected' : '' ?>><?= e($v) ?></option><?php endforeach; ?></select>
       </label>

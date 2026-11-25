@@ -60,7 +60,8 @@ function back(string $fallback = ''): never
 {
     $ref = $_SERVER['HTTP_REFERER'] ?? '';
     $host = $_SERVER['HTTP_HOST'] ?? '';
-    if ($ref && parse_url($ref, PHP_URL_HOST) === $host) {
+    $refHost = (string)parse_url($ref, PHP_URL_HOST) . (parse_url($ref, PHP_URL_PORT) ? ':' . parse_url($ref, PHP_URL_PORT) : '');
+    if ($ref && $refHost === $host) {
         header('Location: ' . $ref);
         exit;
     }
@@ -115,6 +116,11 @@ function csrf_check(): void
     $token = $_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!is_string($token) || !hash_equals(csrf_token(), $token)) {
         // 403 (bukan 419): Apache/LiteSpeed tidak mengenal 419 dan akan mengubahnya menjadi 500
+        if (function_exists('post_too_large') && post_too_large()) {
+            http_response_code(413);
+            flash('error', 'File terlalu besar untuk dikirim sekaligus (' . filesize_h((int)$_SERVER['CONTENT_LENGTH']) . ', batas server ' . ini_get('post_max_size') . '). Muat ulang halaman lalu unggah lagi — file besar akan dikirim bertahap.');
+            back('index.php');
+        }
         http_response_code(403);
         header('Content-Type: text/html; charset=utf-8');
         echo '<!DOCTYPE html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sesi kedaluwarsa</title>'

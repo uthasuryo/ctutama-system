@@ -34,7 +34,7 @@ if (is_post()) {
             flash('error', 'Pilih jenis dokumen.');
             redirect($self('dokumen'));
         }
-        [$saved, $errors] = save_project_uploads($id, $_FILES['files'] ?? null, [
+        [$saved, $errors] = save_project_uploads($id, request_files('files'), [
             'doc_type' => $type, 'title' => input('title', ''), 'doc_date' => nullable(input('doc_date')),
             'notes' => nullable(input('notes')), 'visible' => (bool)input('visible_to_investor'),
         ]);
@@ -95,7 +95,7 @@ if (is_post()) {
         q('INSERT INTO project_albums (project_id, name, album_date, visible_to_investor, created_by) VALUES (?,?,?,?,?)',
             [$id, mb_substr($name, 0, 150), nullable(input('album_date')) ?: date('Y-m-d'), $visible, $me['id']]);
         $aid = (int)db()->lastInsertId();
-        [$saved, $errors] = save_project_uploads($id, $_FILES['files'] ?? null, [
+        [$saved, $errors] = save_project_uploads($id, request_files('files'), [
             'doc_type' => PHOTO_DOC_TYPE, 'title' => $name, 'album_id' => $aid, 'visible' => $visible,
             'doc_date' => nullable(input('album_date')),
         ], IMAGE_TYPES);
@@ -112,7 +112,7 @@ if (is_post()) {
     }
     if ($action === 'add_photos') {
         $existing = (int)q_val('SELECT COUNT(*) FROM project_documents WHERE album_id = ?', [$album['id']]);
-        [$saved, $errors] = save_project_uploads($id, $_FILES['files'] ?? null, [
+        [$saved, $errors] = save_project_uploads($id, request_files('files'), [
             'doc_type' => PHOTO_DOC_TYPE, 'title' => $album['name'], 'album_id' => $album['id'],
             'visible' => $album['visible_to_investor'], 'doc_date' => $album['album_date'], 'number_from' => $existing,
         ], IMAGE_TYPES);
@@ -253,7 +253,7 @@ $fileRow = function (array $d, string $returnTo) use ($admin, $postBtn) {
       <?php if ($admin): ?>
         <span class="vis-dot <?= $d['visible_to_investor'] ? 'is-on' : '' ?>" title="<?= $d['visible_to_investor'] ? 'Terlihat investor' : 'Hanya internal' ?>"><?= icon($d['visible_to_investor'] ? 'users' : 'lock', 14) ?></span>
       <?php endif; ?>
-      <details class="dd">
+      <details class="dd" data-title="<?= e($d['title']) ?>">
         <summary class="iconbtn" aria-label="Opsi dokumen"><?= icon('dots', 18) ?></summary>
         <div class="dd__menu">
           <a class="dd__item" href="<?= $view ?>" target="_blank" rel="noopener"><?= icon('eye', 16) ?> Lihat</a>
@@ -393,7 +393,7 @@ require APP_ROOT . '/views/app_header.php';
                   </div>
                   <?php if ($admin): ?>
                     <?php if (!$it['skipped']): ?><button type="button" class="btn btn--sm <?= $it['count'] ? 'btn--ghost' : 'btn--line' ?>" data-toggle="up-<?= e($it['slug']) ?>"><?= icon($it['count'] ? 'plus' : 'upload', 15) ?><span class="hide-sm"><?= $it['count'] ? ' Tambah' : ' Unggah' ?></span></button><?php endif; ?>
-                    <details class="dd">
+                    <details class="dd" data-title="<?= e($it['label']) ?>">
                       <summary class="iconbtn" aria-label="Opsi item"><?= icon('dots', 18) ?></summary>
                       <div class="dd__menu">
                         <?php if ($it['skipped']): ?>
@@ -545,7 +545,7 @@ require APP_ROOT . '/views/app_header.php';
           </div>
           <?php if ($admin): ?>
             <?= $postBtn(icon($a['visible_to_investor'] ? 'users' : 'lock', 13) . ' ' . ($a['visible_to_investor'] ? 'Investor' : 'Internal'), ['action' => 'toggle_album', 'album_id' => $a['id']], 'vispill' . ($a['visible_to_investor'] ? ' is-on' : '')) ?>
-            <details class="dd">
+            <details class="dd" data-title="<?= e($a['name']) ?>">
               <summary class="iconbtn" aria-label="Opsi album"><?= icon('dots', 18) ?></summary>
               <div class="dd__menu">
                 <button type="button" class="dd__item" data-toggle="add-<?= $a['id'] ?>"><?= icon('plus', 16) ?> Tambah foto</button>

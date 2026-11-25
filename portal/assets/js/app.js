@@ -36,10 +36,41 @@
   const onTab = document.querySelector('.ptabs a.is-on');
   if (onTab) onTab.scrollIntoView({ block: 'nearest', inline: 'center' });
 
-  // Menu ⋯ (details): hanya satu terbuka, tutup saat klik di luar
+  // Menu ⋯ (details): hanya satu terbuka, tutup saat klik di luar.
+  // Menu diposisikan "fixed" agar tidak terpotong kotak pembungkus; di HP tampil sebagai panel bawah.
   const menus = [...document.querySelectorAll('details.dd')];
-  menus.forEach(d => d.addEventListener('toggle', () => { if (d.open) menus.forEach(o => { if (o !== d) o.open = false; }); }));
+  const ddMobile = () => window.matchMedia('(max-width: 640px)').matches;
+  const ddScrim = document.createElement('div');
+  ddScrim.className = 'dd-scrim'; ddScrim.hidden = true;
+  document.body.append(ddScrim);
+  const placeMenu = d => {
+    const m = d.querySelector('.dd__menu'); if (!m) return;
+    m.classList.toggle('is-sheet', ddMobile());
+    if (ddMobile()) { m.style.left = m.style.top = ''; return; }
+    const r = d.querySelector('summary').getBoundingClientRect();
+    const w = m.offsetWidth, h = m.offsetHeight;
+    let top = r.bottom + 4;
+    if (top + h > window.innerHeight - 8 && r.top - h - 4 > 8) top = r.top - h - 4; // buka ke atas bila tidak muat
+    m.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + 'px';
+    m.style.top = Math.max(8, top) + 'px';
+  };
+  const openMenu = () => menus.find(d => d.open);
+  menus.forEach(d => {
+    const m = d.querySelector('.dd__menu');
+    if (m && d.dataset.title && !m.querySelector('.dd__title')) {
+      const t = document.createElement('div'); t.className = 'dd__title'; t.textContent = d.dataset.title; m.prepend(t);
+    }
+    d.addEventListener('toggle', () => {
+      if (d.open) { menus.forEach(o => { if (o !== d) o.open = false; }); placeMenu(d); }
+      const any = openMenu();
+      ddScrim.hidden = !(any && ddMobile());
+      document.documentElement.classList.toggle('dd-lock', !!(any && ddMobile()));
+    });
+  });
   document.addEventListener('click', e => { menus.forEach(d => { if (d.open && !d.contains(e.target)) d.open = false; }); });
+  document.addEventListener('keydown', e => { const d = openMenu(); if (e.key === 'Escape' && d) { d.open = false; d.querySelector('summary').focus(); } });
+  window.addEventListener('resize', () => { const d = openMenu(); if (d) placeMenu(d); });
+  window.addEventListener('scroll', () => { const d = openMenu(); if (d && !ddMobile()) placeMenu(d); }, { passive: true });
 
   // Tombol buka/tutup form (unggah, tambah item, album baru, dll.)
   const openPanel = (el, scroll) => {
